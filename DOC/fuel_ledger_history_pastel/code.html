@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&amp;family=Outfit:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+@layer base {
+  html, body {
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    background-color: #f8f9ff;
+  }
+  body {
+    overscroll-behavior: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+::-webkit-scrollbar {
+  display: none;
+}
+</style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "tertiary-fixed-dim": "#d0bcff",
+          "slate-text-main": "#1e293b",
+          "background": "#f8f9ff",
+          "on-tertiary-container": "#4600a7",
+          "surface-container-lowest": "#ffffff",
+          "error": "#ba1a1a",
+          "on-secondary-container": "#684000",
+          "on-secondary-fixed-variant": "#653e00",
+          "petrol-accent": "#d97706",
+          "surface": "#f8f9ff",
+          "tertiary-fixed": "#e9ddff",
+          "surface-container-high": "#dce9ff",
+          "on-tertiary-fixed": "#23005c",
+          "on-secondary": "#ffffff",
+          "on-primary": "#ffffff",
+          "petrol-badge": "#fef3c7",
+          "on-tertiary": "#ffffff",
+          "secondary": "#855300",
+          "on-primary-fixed-variant": "#005236",
+          "outline": "#6c7a71",
+          "cng-accent": "#059669",
+          "on-surface-variant": "#3c4a42",
+          "primary-fixed": "#6ffbbe",
+          "alert-pastel-border": "#fecaca",
+          "on-primary-fixed": "#002113",
+          "secondary-fixed-dim": "#ffb95f",
+          "surface-tint": "#006c49",
+          "on-error": "#ffffff",
+          "on-error-container": "#93000a",
+          "inverse-primary": "#4edea3",
+          "alert-accent": "#e11d48",
+          "on-tertiary-fixed-variant": "#5516be",
+          "surface-variant": "#d3e4fe",
+          "inverse-on-surface": "#eaf1ff",
+          "tertiary": "#6d3bd7",
+          "slate-soft": "#e2e8f0",
+          "petrol-pastel-bg": "#fffbeb",
+          "cng-pastel-bg": "#ecfdf5",
+          "slate-text-muted": "#64748b",
+          "tertiary-container": "#b090ff",
+          "secondary-fixed": "#ffddb8",
+          "surface-container-highest": "#d3e4fe",
+          "outline-variant": "#bbcabf",
+          "primary": "#006c49",
+          "surface-dim": "#cbdbf5",
+          "canvas-tint": "#f1f5f9",
+          "alert-pastel-bg": "#fef2f2",
+          "cng-badge": "#d1fae5",
+          "surface-container": "#e5eeff",
+          "cng-pastel-border": "#a7f3d0",
+          "on-secondary-fixed": "#2a1700",
+          "canvas-lavender": "#f8fafc",
+          "surface-container-low": "#eff4ff",
+          "surface-bright": "#f8f9ff",
+          "surface-white": "#ffffff",
+          "on-background": "#0b1c30",
+          "error-container": "#ffdad6",
+          "secondary-container": "#fea619",
+          "on-primary-container": "#00422b",
+          "petrol-pastel-border": "#fde68a",
+          "on-surface": "#0b1c30",
+          "inverse-surface": "#213145",
+          "primary-container": "#10b981",
+          "slate-text-faint": "#94a3b8",
+          "primary-fixed-dim": "#4edea3"
+        },
+        "borderRadius": {
+          "DEFAULT": "1rem",
+          "lg": "1.5rem",
+          "xl": "2rem",
+          "2xl": "2.25rem",
+          "3xl": "2.5rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "card-gap": "1rem",
+          "dock-safe-bottom": "6rem",
+          "screen-edge-padding": "1.25rem",
+          "space-xs": "0.5rem",
+          "space-2xs": "0.25rem",
+          "space-md": "1rem",
+          "space-sm": "0.75rem",
+          "space-xl": "2rem",
+          "space-lg": "1.5rem",
+          "space-2xl": "3rem",
+          "card-padding": "1.5rem"
+        },
+        "fontFamily": {
+          "label-caps": ["Outfit", "sans-serif"],
+          "body-lg": ["Nunito Sans", "sans-serif"],
+          "body-md": ["Nunito Sans", "sans-serif"],
+          "headline-sm": ["Outfit", "sans-serif"],
+          "telemetry-val-md": ["Outfit", "sans-serif"],
+          "headline-md": ["Outfit", "sans-serif"],
+          "telemetry-val-lg": ["Outfit", "sans-serif"],
+          "body-sm": ["Nunito Sans", "sans-serif"],
+          "display-odometer": ["Outfit", "sans-serif"],
+          "headline-lg": ["Outfit", "sans-serif"],
+          "label-tag": ["Nunito Sans", "sans-serif"],
+          "display-odometer-mobile": ["Outfit", "sans-serif"]
+        }
+      },
+    },
+  }
+</script>
+<style>
+  body {
+    min-height: max(884px, 100dvh);
+    background: linear-gradient(180deg, #f8fafc 0%, #f4f7fc 50%, #eff5f7 100%);
+  }
+</style>
+</head>
+<body class="bg-background text-slate-text-main font-body-md text-[14px] flex flex-col min-h-screen selection:bg-emerald-100 selection:text-emerald-900">
+<!-- Header (Clean pastel soft blur) -->
+<header class="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-100 shadow-[0_2px_12px_rgba(15,23,42,0.03)] pt-safe">
+<div class="h-16 px-5 flex items-center justify-between gap-3 max-w-[480px] mx-auto">
+<div class="flex items-center gap-3 min-w-0">
+<div class="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-emerald-600 text-[20px]">electric_bolt</span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-2">
+<span class="text-slate-800 font-headline-sm font-semibold tracking-tight truncate text-[17px]">Grand Vitara CNG</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span class="text-emerald-700 font-medium text-[11px] tracking-tight">Synced via Android Auto</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-2 flex-shrink-0">
+<div class="bg-slate-50 border border-slate-200/70 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm">
+<span class="material-symbols-outlined text-[15px] text-slate-400">speed</span>
+<span class="font-headline-sm font-semibold text-slate-700 text-xs tabular-nums">42,850</span>
+<span class="text-[11px] font-medium text-slate-400">km</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-emerald-100 border border-emerald-200 text-emerald-800 flex items-center justify-center font-headline-sm font-bold text-xs shadow-sm">
+<span>GV</span>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Container -->
+<main class="flex flex-col relative w-full px-5 pt-20 pb-28 min-h-screen max-w-[480px] mx-auto">
+<div class="flex flex-col w-full space-y-4">
+<!-- Screen Context Header with Gentle OBD-II Badge -->
+<div class="flex flex-col space-y-1 pt-1">
+<div class="flex items-center justify-between">
+<h1 class="font-headline-lg font-bold text-[24px] text-slate-800 tracking-tight">Fuel Ledger &amp; Events</h1>
+<span class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 font-label-tag text-[11px] font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          OBD-II Verified
+        </span>
+</div>
+<p class="font-body-sm text-slate-500 text-[13px]">Historical fill-ups, switchovers &amp; calculated efficiencies</p>
+</div>
+<!-- Filter Chips (Soft Pastel Pill Buttons) -->
+<div class="flex items-center gap-2 overflow-x-auto pb-1 -mx-5 px-5 no-scrollbar" id="filter-container">
+<button class="filter-pill flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 text-white font-headline-sm font-medium text-[13px] transition-all active:scale-95 shadow-[0_2px_8px_rgba(5,150,105,0.25)] flex-shrink-0" data-filter="all" type="button">
+<span>All Events</span>
+<span class="px-1.5 py-0.5 rounded-full bg-white/25 text-white text-[10px] font-bold tabular-nums">28</span>
+</button>
+<button class="filter-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white text-slate-600 border border-slate-200/80 font-headline-sm font-medium text-[13px] transition-all active:scale-95 hover:bg-emerald-50/50 flex-shrink-0 shadow-sm" data-filter="cng" type="button">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+<span>CNG Refills</span>
+</button>
+<button class="filter-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white text-slate-600 border border-slate-200/80 font-headline-sm font-medium text-[13px] transition-all active:scale-95 hover:bg-amber-50/50 flex-shrink-0 shadow-sm" data-filter="petrol" type="button">
+<span class="w-2 h-2 rounded-full bg-amber-400"></span>
+<span>Petrol Refills</span>
+</button>
+<button class="filter-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white text-slate-600 border border-slate-200/80 font-headline-sm font-medium text-[13px] transition-all active:scale-95 hover:bg-rose-50/50 flex-shrink-0 shadow-sm" data-filter="switch" type="button">
+<span class="w-2 h-2 rounded-full bg-rose-400"></span>
+<span>Switchovers</span>
+</button>
+</div>
+<!-- Top Metrics Summary: Spacious Bento Pastel Card -->
+<div class="grid grid-cols-2 gap-3.5 bg-white p-4 rounded-3xl border border-slate-100 shadow-[0_4px_20px_rgba(15,23,42,0.03)]">
+<!-- 30D Fuel Ratio Card -->
+<div class="flex flex-col p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/70 via-emerald-50/30 to-transparent border border-emerald-100/60">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-[11px] font-semibold text-emerald-800 tracking-wide uppercase">30D Fuel Ratio</span>
+<span class="material-symbols-outlined text-[15px] text-emerald-600">pie_chart</span>
+</div>
+<div class="flex items-baseline gap-1 mt-2">
+<span class="font-headline-lg text-[22px] font-bold text-emerald-700 tabular-nums">84%</span>
+<span class="font-label-tag text-[10px] font-bold text-emerald-600 uppercase">CNG</span>
+<span class="font-headline-sm text-[15px] font-semibold text-amber-700 ml-auto tabular-nums">16%</span>
+<span class="font-label-tag text-[10px] font-bold text-amber-600 uppercase">PET</span>
+</div>
+<!-- Dual Segment Progress Bar -->
+<div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2.5 flex p-0.5">
+<div class="bg-emerald-400 h-full rounded-l-full" style="width: 84%"></div>
+<div class="bg-amber-300 h-full rounded-r-full ml-0.5" style="width: 16%"></div>
+</div>
+</div>
+<!-- Net Running Cost Card -->
+<div class="flex flex-col p-3.5 rounded-2xl bg-gradient-to-br from-slate-50 via-slate-50/40 to-transparent border border-slate-200/60">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-[11px] font-semibold text-slate-600 tracking-wide uppercase">Net Running Cost</span>
+<span class="material-symbols-outlined text-[15px] text-slate-400">payments</span>
+</div>
+<div class="flex items-baseline gap-1 mt-2">
+<span class="font-headline-lg text-[22px] font-bold text-slate-800 tabular-nums">₹3.04</span>
+<span class="font-body-sm text-[11px] text-slate-400 font-medium">/ km</span>
+</div>
+<div class="flex items-center gap-1 mt-2 text-emerald-600 font-headline-sm text-[11px] font-semibold">
+<span class="material-symbols-outlined text-[13px] font-bold">trending_down</span>
+<span>-62% vs Petrol pure</span>
+</div>
+</div>
+</div>
+<!-- Timeline Activity Ledger -->
+<div class="relative pl-6 space-y-4 pt-1" id="timeline-list">
+<!-- Soft Pastel Vertical Track Line -->
+<div class="absolute left-2.5 top-4 bottom-4 w-0.5 bg-gradient-to-b from-emerald-200 via-rose-200 to-amber-200 rounded-full"></div>
+<!-- Activity Card 1: CNG Refill Event -->
+<div class="timeline-node relative flex flex-col group" data-category="cng">
+<!-- Mint Node Icon -->
+<div class="absolute -left-6 top-3 flex items-center justify-center w-5 h-5 rounded-full bg-white shadow-sm ring-4 ring-emerald-50">
+<div class="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+</div>
+</div>
+<!-- Spacious White Card -->
+<div class="bg-white p-4 rounded-3xl border border-emerald-100 shadow-[0_4px_16px_rgba(16,185,129,0.05)] transition-all hover:shadow-[0_6px_20px_rgba(16,185,129,0.1)] flex flex-col space-y-3">
+<!-- Top Row: Badge & Timestamp -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-700 font-headline-sm font-semibold text-[11px] uppercase tracking-wide">
+                CNG Refill
+              </span>
+<span class="font-body-sm text-[12px] text-slate-400">Today, 08:30 AM</span>
+</div>
+<span class="font-body-sm text-[12px] text-slate-500 flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-slate-400">near_me</span>
+              Indian Oil CNG, Okhla
+            </span>
+</div>
+<!-- Quantity, Price & Cycle Metric Pill -->
+<div class="flex items-center justify-between pt-0.5">
+<div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-lg font-bold text-[24px] text-slate-800 tabular-nums">+8.42</span>
+<span class="font-headline-sm font-semibold text-slate-500 text-xs">kg</span>
+<span class="font-body-sm text-slate-400 text-xs ml-2">@ ₹82.5/kg</span>
+</div>
+<span class="font-body-sm text-xs font-semibold text-slate-500">Total Paid: ₹695</span>
+</div>
+<!-- Soft Green Pill for Cycle Metric -->
+<div class="flex flex-col items-end">
+<span class="font-headline-sm text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Cycle Metric</span>
+<div class="flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 font-headline-sm font-bold text-[14px] mt-1 shadow-sm">
+<span class="material-symbols-outlined text-[15px]">eco</span>
+<span>27.1 km/kg</span>
+</div>
+</div>
+</div>
+<!-- Divider & Footnote Diagnostics -->
+<div class="pt-2 border-t border-slate-50 flex items-center justify-between text-slate-500">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 border border-slate-100 text-slate-600 font-headline-sm text-[11px] font-medium">
+<span class="material-symbols-outlined text-[13px] text-slate-400">speed</span>
+<span class="tabular-nums">42,850 km</span>
+</div>
+<div class="flex items-center gap-1 font-headline-sm text-[11px] font-medium text-emerald-600">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+<span>Tank Full (200 Bar)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Activity Card 2: Switchover Event -->
+<div class="timeline-node relative flex flex-col group" data-category="switch">
+<!-- Rose Node Icon -->
+<div class="absolute -left-6 top-3 flex items-center justify-center w-5 h-5 rounded-full bg-white shadow-sm ring-4 ring-rose-50">
+<div class="w-3.5 h-3.5 rounded-full bg-rose-400 flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+</div>
+</div>
+<!-- Soft Rose-Peach Card -->
+<div class="bg-white p-4 rounded-3xl border border-rose-100/90 shadow-[0_4px_16px_rgba(244,63,94,0.04)] transition-all hover:shadow-[0_6px_20px_rgba(244,63,94,0.08)] flex flex-col space-y-3">
+<!-- Top Row: Badge & Timestamp -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-rose-50 border border-rose-200/70 text-rose-700 font-headline-sm font-semibold text-[11px] uppercase tracking-wide">
+                System Event
+              </span>
+<span class="font-body-sm text-[12px] text-slate-400">2 days ago, 06:15 PM</span>
+</div>
+<span class="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-headline-sm text-[11px] font-medium">
+              Auto Switch
+            </span>
+</div>
+<!-- Description Box with Soft Peach/Rose Accent -->
+<div class="flex flex-col p-3 rounded-2xl bg-rose-50/40 border border-rose-100/50 space-y-1.5">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5 font-headline-sm text-slate-800 font-bold text-[14px]">
+<span class="material-symbols-outlined text-rose-500 text-[18px]">swap_calls</span>
+<span>CNG Empty Transition</span>
+</div>
+<span class="font-headline-sm text-[12px] font-semibold text-slate-500 tabular-nums">42,610 km</span>
+</div>
+<p class="font-body-sm text-slate-600 text-[13px] leading-relaxed">
+              Ran <strong class="text-emerald-700 font-semibold">224 km</strong> on previous cylinder. Seamlessly switched to Petrol reserve feed with zero throttle lag.
+            </p>
+</div>
+<!-- Footnote Diagnostics -->
+<div class="pt-1 flex items-center justify-between font-headline-sm text-[11px] font-medium text-slate-500">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-amber-500">compress</span>
+              Residual Pressure: 8 Bar
+            </span>
+<span class="flex items-center gap-1 text-amber-700 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              Petrol Feed Engaged
+            </span>
+</div>
+</div>
+</div>
+<!-- Activity Card 3: Petrol Refill Event -->
+<div class="timeline-node relative flex flex-col group" data-category="petrol">
+<!-- Amber Node Icon -->
+<div class="absolute -left-6 top-3 flex items-center justify-center w-5 h-5 rounded-full bg-white shadow-sm ring-4 ring-amber-50">
+<div class="w-3.5 h-3.5 rounded-full bg-amber-400 flex items-center justify-center">
+<span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+</div>
+</div>
+<!-- Soft Butter Warm Card -->
+<div class="bg-white p-4 rounded-3xl border border-amber-100 shadow-[0_4px_16px_rgba(245,158,11,0.05)] transition-all hover:shadow-[0_6px_20px_rgba(245,158,11,0.09)] flex flex-col space-y-3">
+<!-- Top Row -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200/80 text-amber-800 font-headline-sm font-semibold text-[11px] uppercase tracking-wide">
+                Petrol Refill
+              </span>
+<span class="font-body-sm text-[12px] text-slate-400">12 Oct, 11:20 AM</span>
+</div>
+<span class="font-body-sm text-[12px] text-slate-500 flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-slate-400">pin_drop</span>
+              HP Petrol Pump
+            </span>
+</div>
+<!-- Quantity, Price & Petrol Efficiency Soft Butter Pill -->
+<div class="flex items-center justify-between pt-0.5">
+<div>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-lg font-bold text-[24px] text-slate-800 tabular-nums">+22.0</span>
+<span class="font-headline-sm font-semibold text-slate-500 text-xs">L</span>
+<span class="font-body-sm text-slate-400 text-xs ml-2">@ ₹96.7/L</span>
+</div>
+<span class="font-body-sm text-xs font-semibold text-slate-500">Total Paid: ₹2,127</span>
+</div>
+<!-- Soft Butter Pill for Petrol Efficiency -->
+<div class="flex flex-col items-end">
+<span class="font-headline-sm text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Petrol Efficiency</span>
+<div class="flex items-center gap-1 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 font-headline-sm font-bold text-[14px] mt-1 shadow-sm">
+<span class="material-symbols-outlined text-[15px]">speed</span>
+<span>17.2 km/L</span>
+</div>
+</div>
+</div>
+<!-- Cold start Banner -->
+<div class="flex items-center justify-between px-3 py-2 rounded-2xl bg-amber-50/40 border border-amber-100/50">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-amber-500">ac_unit</span>
+<span class="font-headline-sm text-[11px] text-slate-600 font-medium">Residual cold starts adjusted: -3.6 km</span>
+</div>
+<span class="font-headline-sm text-[11px] font-semibold text-slate-500 tabular-nums">42,150 km</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Lifetime Telemetry Summary Card (Clean Pastel White) -->
+<div class="p-3.5 rounded-3xl bg-white border border-slate-100 shadow-[0_4px_16px_rgba(15,23,42,0.04)] flex items-center justify-between gap-3 mt-3">
+<div class="flex items-center gap-3 min-w-0">
+<div class="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-600">
+<span class="material-symbols-outlined text-[20px]">savings</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-headline-sm text-[10px] font-semibold text-slate-400 uppercase tracking-wide">Lifetime Telemetry</span>
+<div class="flex items-center gap-2 text-slate-700 font-headline-sm text-[13px] truncate">
+<span>Cost: <strong class="text-emerald-700 font-bold">₹3.38/km</strong></span>
+<span class="text-slate-300">•</span>
+<span class="truncate">Saved: <strong class="text-emerald-700 font-bold">₹46,200</strong></span>
+</div>
+</div>
+</div>
+<button class="px-3.5 py-2 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200/70 font-headline-sm text-[12px] font-semibold transition-all active:scale-95 flex items-center gap-1 flex-shrink-0 shadow-sm" type="button">
+<span>Export</span>
+<span class="material-symbols-outlined text-[14px]">ios_share</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Floating Friendly Rounded Action Dock (Pastel System) -->
+<nav class="fixed bottom-3 inset-x-3 z-50 max-w-[460px] mx-auto pb-safe">
+<div class="bg-white/90 backdrop-blur-xl border border-slate-200/80 rounded-3xl p-2 shadow-[0_10px_30px_rgba(15,23,42,0.1)] flex items-center justify-between gap-2">
+<!-- CNG Empty Action -->
+<a class="flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-2xl bg-transparent hover:bg-amber-50 text-slate-600 hover:text-amber-700 transition-all active:scale-[0.96]" data-path="cng-empty-alert" href="#">
+<span class="material-symbols-outlined text-[20px] text-amber-500">propane_tank</span>
+<span class="font-headline-sm text-[11px] font-semibold mt-0.5 tracking-tight text-center">CNG Empty</span>
+</a>
+<!-- Main Central Action (+ Refill Fuel) -->
+<a class="flex-[1.4] flex items-center justify-center gap-1.5 py-3 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-headline-sm text-[14px] font-semibold transition-all active:scale-[0.96] shadow-[0_4px_14px_rgba(5,150,105,0.35)]" data-path="refill-fuel-wizard" href="#">
+<span class="material-symbols-outlined text-[19px]">local_gas_station</span>
+<span class="tracking-tight">+ Refill Fuel</span>
+</a>
+<!-- Logs & History (Active Tab) -->
+<a class="flex-1 flex flex-col items-center justify-center py-2 px-1 rounded-2xl bg-emerald-50/70 border border-emerald-100 text-emerald-800 transition-all active:scale-[0.96]" data-path="logs-history" href="#">
+<span class="material-symbols-outlined text-[20px] text-emerald-600" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-headline-sm text-[11px] font-bold mt-0.5 tracking-tight text-center">Logs &amp; History</span>
+</a>
+</div>
+</nav>
+<script>
+  // Filter pill micro-interaction logic
+  (function() {
+    const filterButtons = document.querySelectorAll('.filter-pill');
+    const nodes = document.querySelectorAll('.timeline-node');
+
+    filterButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const filterType = btn.getAttribute('data-filter');
+
+        // Reset all buttons to pastel unselected state
+        filterButtons.forEach(b => {
+          b.className = 'filter-pill flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white text-slate-600 border border-slate-200/80 font-headline-sm font-medium text-[13px] transition-all active:scale-95 flex-shrink-0 shadow-sm';
+        });
+
+        // Set active button
+        btn.className = 'filter-pill flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 text-white font-headline-sm font-medium text-[13px] transition-all active:scale-95 shadow-[0_2px_8px_rgba(5,150,105,0.25)] flex-shrink-0';
+
+        // Animate & Filter Nodes
+        nodes.forEach(node => {
+          const category = node.getAttribute('data-category');
+          if (filterType === 'all' || category === filterType) {
+            node.style.display = 'flex';
+            node.style.opacity = '0';
+            setTimeout(() => {
+              node.style.transition = 'opacity 200ms ease';
+              node.style.opacity = '1';
+            }, 10);
+          } else {
+            node.style.display = 'none';
+          }
+        });
+      });
+    });
+  })();
+</script>
+</body></html>
