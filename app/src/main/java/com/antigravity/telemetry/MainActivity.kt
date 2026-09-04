@@ -41,6 +41,7 @@ import com.antigravity.telemetry.feature.ledger.FuelLedgerViewModel
 import com.antigravity.telemetry.feature.refill.RefillViewModel
 import com.antigravity.telemetry.feature.refill.RefillWizardSheet
 import com.antigravity.telemetry.feature.simulator.SimulatorBottomSheet
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
         val app = application as AntiGravityApp
         val repository = app.repository
         val telemetryManager = app.telemetryManager
+        val preferences = app.preferences
 
         setContent {
             AntiGravityTheme {
@@ -109,7 +111,7 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.padding(innerPadding)) {
                         NavHost(navController = navController, startDestination = "dashboard") {
                             composable("dashboard") {
-                                val dashboardVm = remember { DashboardViewModel(repository) }
+                                val dashboardVm = remember { DashboardViewModel(repository, preferences) }
                                 DashboardScreen(
                                     viewModel = dashboardVm,
                                     onNavigateToRefill = { showRefillSheet = true },
@@ -166,7 +168,9 @@ class MainActivity : ComponentActivity() {
                             telemetryManager = telemetryManager,
                             onAdvanceOdometer = { delta ->
                                 scope.launch {
-                                    val currentOdo = repository.getLastRefillEvent(com.antigravity.telemetry.core.model.FuelType.CNG)?.odometerKm ?: 42850.0
+                                    val currentOdo = repository.telemetryState.firstOrNull()?.odometerKm?.takeIf { it > 0.0 }
+                                        ?: repository.getLastRefillEvent(com.antigravity.telemetry.core.model.FuelType.CNG)?.odometerKm
+                                        ?: 42850.0
                                     repository.updateOdometer(currentOdo + delta)
                                 }
                             },

@@ -7,6 +7,8 @@ import com.antigravity.telemetry.core.model.FuelEvent
 import com.antigravity.telemetry.core.model.FuelType
 import com.antigravity.telemetry.core.model.TelemetrySnapshot
 import com.antigravity.telemetry.core.model.VehicleMeta
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,10 +16,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
-class TelemetryRepository(private val database: AppDatabase) {
+class TelemetryRepository(
+    private val database: AppDatabase,
+    private val preferences: FuelPreferences? = null
+) {
 
-    private val _isSimulationMode = MutableStateFlow(false)
+    private val _isSimulationMode = MutableStateFlow(preferences?.getSimulationMode() ?: false)
     val isSimulationMode: StateFlow<Boolean> = _isSimulationMode.asStateFlow()
 
     // Clean actual telemetry state - no guesswork, nulls for unmeasured sensors
@@ -48,6 +54,21 @@ class TelemetryRepository(private val database: AppDatabase) {
         )
     )
 
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            val vehicle = database.vehicleDao().getVehicleSync("default-vehicle-victoris")
+            val actualEvents = database.fuelEventDao().getEventsAscSync(false)
+            val bestActualOdo = maxOf(vehicle?.activeOdometerKm ?: 0.0, actualEvents.maxOfOrNull { it.odometerKm } ?: 0.0)
+            if (bestActualOdo > 0.0) {
+                _actualTelemetryState.value = _actualTelemetryState.value.copy(odometerKm = bestActualOdo)
+            }
+
+            val simEvents = database.fuelEventDao().getEventsAscSync(true)
+            val bestSimOdo = maxOf(42850.0, simEvents.maxOfOrNull { it.odometerKm } ?: 0.0)
+            _simulatedTelemetryState.value = _simulatedTelemetryState.value.copy(odometerKm = bestSimOdo)
+        }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val telemetryState: Flow<TelemetrySnapshot> = _isSimulationMode.flatMapLatest { isSim ->
         if (isSim) _simulatedTelemetryState else _actualTelemetryState
@@ -75,6 +96,7 @@ class TelemetryRepository(private val database: AppDatabase) {
 
     fun setSimulationMode(enabled: Boolean) {
         _isSimulationMode.value = enabled
+        preferences?.setSimulationMode(enabled)
     }
 
     suspend fun getEventsAsc(isSimulation: Boolean = _isSimulationMode.value): List<FuelEvent> {

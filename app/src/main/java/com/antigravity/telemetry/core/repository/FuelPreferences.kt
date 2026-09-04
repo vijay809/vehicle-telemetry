@@ -32,4 +32,20 @@ class FuelPreferences(context: Context) {
         val key = if (fuelType == FuelType.CNG) "cng_auto_cut" else "petrol_auto_cut"
         prefs.edit().putBoolean(key, enabled).apply()
     }
+
+    fun isPetrolColdStartIncluded(): Boolean {
+        return prefs.getBoolean("petrol_include_cold_start", true)
+    }
+
+    fun setPetrolColdStartIncluded(included: Boolean) {
+        prefs.edit().putBoolean("petrol_include_cold_start", included).apply()
+    }
+
+    fun getSimulationMode(): Boolean {
+        return prefs.getBoolean("is_simulation_mode", false)
+    }
+
+    fun setSimulationMode(enabled: Boolean) {
+        prefs.edit().putBoolean("is_simulation_mode", enabled).apply()
+    }
 }

@@ -217,6 +217,65 @@ class CalculationEnginesTest {
         // Mileage = 300 / 20.0 = 15.0 km/L
         assertEquals(300.0, result.residualDistanceKm, 0.01)
         assertEquals(15.0, result.latestMileageKmPerL, 0.01)
+        assertEquals(15.0, result.mileageWithColdStartKmPerL, 0.01)
+        assertEquals(15.0, result.mileageWithoutColdStartKmPerL, 0.01)
+    }
+
+    @Test
+    fun `Model C calculates dual petrol mileage with and without cold start`() {
+        val events = listOf(
+            // Petrol refill at 30,000 km, 20 L
+            FuelEvent(
+                odometerKm = 30000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.PETROL,
+                quantity = 20.0,
+                timestamp = 100L
+            ),
+            // CNG refill at 30,100 km
+            FuelEvent(
+                odometerKm = 30100.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 5.0,
+                timestamp = 200L
+            ),
+            // CNG ran out at 30,220 km (120 km raw on CNG) with 5 cold starts (5 * 1.2 km = 6.0 km on petrol)
+            FuelEvent(
+                odometerKm = 30220.0,
+                type = EventType.CNG_EMPTY,
+                coldStartsSinceLastRefill = 5,
+                timestamp = 300L
+            ),
+            // Petrol hits low fuel at 30,420 km
+            FuelEvent(
+                odometerKm = 30420.0,
+                type = EventType.FUEL_LOW,
+                fuelType = FuelType.PETROL,
+                timestamp = 400L
+            )
+        )
+
+        val result = CalculationEngines.calculateResidualPetrolEfficiency(
+            events = events,
+            currentOdometer = 30420.0,
+            petrolLevelPercent = 10.0,
+            vehicle = testVehicle
+        )
+
+        // Gross distance = 420 km
+        // Raw CNG = 120 km
+        // Net CNG = 120 - 6.0 = 114 km
+        // Petrol distance with cold start = 420 - 114 = 306 km (300 pure petrol + 6 warmup on petrol)
+        // Petrol distance without cold start = 420 - 120 = 300 km (pure petrol only)
+        // Mileage with cold start = 306 / 20 = 15.30 km/L
+        // Mileage without cold start = 300 / 20 = 15.00 km/L
+        assertEquals(306.0, result.residualDistanceKm, 0.01)
+        assertEquals(300.0, result.residualDistanceWithoutColdStartKm, 0.01)
+        assertEquals(15.30, result.mileageWithColdStartKmPerL, 0.01)
+        assertEquals(15.00, result.mileageWithoutColdStartKmPerL, 0.01)
+        assertEquals(6.0, result.totalColdStartKm, 0.01)
+        assertEquals(5, result.totalColdStartsCount)
     }
 
     @Test

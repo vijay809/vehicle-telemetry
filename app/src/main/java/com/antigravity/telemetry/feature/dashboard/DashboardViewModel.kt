@@ -10,7 +10,9 @@ import com.antigravity.telemetry.core.model.EventType
 import com.antigravity.telemetry.core.model.FuelEvent
 import com.antigravity.telemetry.core.model.TelemetrySnapshot
 import com.antigravity.telemetry.core.model.VehicleMeta
+import com.antigravity.telemetry.core.repository.FuelPreferences
 import com.antigravity.telemetry.core.repository.TelemetryRepository
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -43,6 +45,8 @@ data class DashboardUiState(
     ),
     val petrolEfficiency: PetrolEfficiencyResult = PetrolEfficiencyResult(
         latestMileageKmPerL = 0.0,
+        mileageWithColdStartKmPerL = 0.0,
+        mileageWithoutColdStartKmPerL = 0.0,
         residualDistanceKm = 0.0,
         estimatedRangeKm = 0.0
     ),
@@ -51,22 +55,74 @@ data class DashboardUiState(
     val lastPetrolRefill: FuelEvent? = null,
     val isSimulationMode: Boolean = false,
     val isLowFuelPetrolMarked: Boolean = false,
-    val lowFuelPetrolOdoKm: Double? = null
+    val lowFuelPetrolOdoKm: Double? = null,
+    val isPetrolColdStartIncluded: Boolean = true
 ) {
     val isCngInUse: Boolean
         get() = !cngEfficiency.isCngExhausted
+
+    val displayedPetrolMileageKmPerL: Double
+        get() = if (isPetrolColdStartIncluded) {
+            petrolEfficiency.mileageWithColdStartKmPerL
+        } else {
+            petrolEfficiency.mileageWithoutColdStartKmPerL
+        }
+
+    val displayedPetrolEstimatedRangeKm: Double
+        get() = if (isPetrolColdStartIncluded) {
+            petrolEfficiency.estimatedRangeWithColdStartKm
+        } else {
+            petrolEfficiency.estimatedRangeWithoutColdStartKm
+        }
+
+    val displayedPetrolCurrentTripKm: Double
+        get() = if (isPetrolColdStartIncluded) {
+            petrolEfficiency.residualDistanceKm
+        } else {
+            petrolEfficiency.residualDistanceWithoutColdStartKm
+        }
 }
 
-class DashboardViewModel(private val repository: TelemetryRepository) : ViewModel() {
+class DashboardViewModel(
+    private val repository: TelemetryRepository,
+    private val preferences: FuelPreferences? = null
+) : ViewModel() {
+
+    private val _isPetrolColdStartIncluded = MutableStateFlow(
+        preferences?.isPetrolColdStartIncluded() ?: true
+    )
+
+    fun setPetrolColdStartIncluded(included: Boolean) {
+        _isPetrolColdStartIncluded.value = included
+        preferences?.setPetrolColdStartIncluded(included)
+    }
 
     val uiState: StateFlow<DashboardUiState> = combine(
         repository.vehicleFlow,
         repository.telemetryState,
         repository.eventsFlow,
-        repository.isSimulationMode
-    ) { vehicle, telemetry, events, isSim ->
+        repository.isSimulationMode,
+        _isPetrolColdStartIncluded
+    ) { vehicle, telemetry, events, isSim, includeColdStart ->
         val activeVehicle = vehicle ?: VehicleMeta()
-        val currentOdo = telemetry.odometerKm
+        val currentOdo = if (telemetry.odometerKm > 0.0) {
+            maxOf(
+                telemetry.odometerKm,
+                events.maxOfOrNull { it.odometerKm } ?: 0.0,
+                activeVehicle.activeOdometerKm
+            )
+        } else {
+            maxOf(
+                activeVehicle.activeOdometerKm,
+                events.maxOfOrNull { it.odometerKm } ?: 0.0
+            )
+        }
+
+        val effectiveTelemetry = if (telemetry.odometerKm <= 0.0 && currentOdo > 0.0) {
+            telemetry.copy(odometerKm = currentOdo)
+        } else {
+            telemetry
+        }
 
         val blended = CalculationEngines.calculateBlendedCost(events, currentOdo)
         val cng = CalculationEngines.calculateCngEfficiency(events, activeVehicle, currentOdo)
@@ -89,7 +145,7 @@ class DashboardViewModel(private val repository: TelemetryRepository) : ViewMode
 
         DashboardUiState(
             vehicle = activeVehicle,
-            telemetry = telemetry,
+            telemetry = effectiveTelemetry,
             blendedCost = blended,
             cngEfficiency = cng,
             petrolEfficiency = pet,
@@ -98,7 +154,8 @@ class DashboardViewModel(private val repository: TelemetryRepository) : ViewMode
             lastPetrolRefill = lastPet,
             isSimulationMode = isSim,
             isLowFuelPetrolMarked = isLowFuel,
-            lowFuelPetrolOdoKm = lowFuelOdo
+            lowFuelPetrolOdoKm = lowFuelOdo,
+            isPetrolColdStartIncluded = includeColdStart
         )
     }.stateIn(
         scope = viewModelScope,

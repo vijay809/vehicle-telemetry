@@ -10,16 +10,16 @@ class AntiGravityApp : Application() {
         AppDatabase.getInstance(this)
     }
 
+    val preferences: com.antigravity.telemetry.core.repository.FuelPreferences by lazy {
+        com.antigravity.telemetry.core.repository.FuelPreferences(this)
+    }
+
     val repository: TelemetryRepository by lazy {
-        TelemetryRepository(database)
+        TelemetryRepository(database, preferences)
     }
 
     val telemetryManager: TelemetryManager by lazy {
         TelemetryManager(repository)
-    }
-
-    val preferences: com.antigravity.telemetry.core.repository.FuelPreferences by lazy {
-        com.antigravity.telemetry.core.repository.FuelPreferences(this)
     }
 
     override fun onCreate() {

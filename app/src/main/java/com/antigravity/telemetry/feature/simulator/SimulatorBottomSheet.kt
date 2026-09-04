@@ -148,7 +148,7 @@ fun SimulatorBottomSheet(
                         color = SlateTextMain
                     )
                     Text(
-                        text = "Increments odometer +0.1 km every 1s",
+                        text = "Increments odometer +0.25 km every 1s",
                         fontSize = 11.sp,
                         color = SlateTextMuted
                     )

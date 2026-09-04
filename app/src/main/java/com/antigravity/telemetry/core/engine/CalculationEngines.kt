@@ -32,8 +32,22 @@ data class CngEfficiencyResult(
 
 data class PetrolEfficiencyResult(
     val latestMileageKmPerL: Double,
+    val mileageWithColdStartKmPerL: Double,
+    val mileageWithoutColdStartKmPerL: Double,
     val residualDistanceKm: Double,
-    val estimatedRangeKm: Double
+    val residualDistanceWithoutColdStartKm: Double = residualDistanceKm,
+    val estimatedRangeKm: Double,
+    val estimatedRangeWithColdStartKm: Double = estimatedRangeKm,
+    val estimatedRangeWithoutColdStartKm: Double = estimatedRangeKm,
+    val totalColdStartKm: Double = 0.0,
+    val totalColdStartsCount: Int = 0
+)
+
+data class CngIntervalAnalysis(
+    val rawCngDistance: Double,
+    val netCngDistance: Double,
+    val coldStartKm: Double,
+    val coldStartsCount: Int
 )
 
 object CalculationEngines {
@@ -202,10 +216,16 @@ object CalculationEngines {
         }
         val exhaustedAtOdo = if (isCngExhausted) lastCngEmpty?.odometerKm else null
 
+        val effectiveCurrentOdo = maxOf(
+            currentOdometer,
+            sessionStartOdo ?: 0.0,
+            lastCngRefill?.odometerKm ?: 0.0
+        )
+
         val currentTrip = if (sessionStartOdo != null) {
-            max(0.0, currentOdometer - sessionStartOdo)
+            max(0.0, effectiveCurrentOdo - sessionStartOdo)
         } else if (lastCngRefill != null && !isCngExhausted) {
-            max(0.0, currentOdometer - lastCngRefill.odometerKm)
+            max(0.0, effectiveCurrentOdo - lastCngRefill.odometerKm)
         } else {
             0.0
         }
@@ -237,9 +257,13 @@ object CalculationEngines {
         petrolLevelPercent: Double,
         vehicle: VehicleMeta = VehicleMeta()
     ): PetrolEfficiencyResult {
-        val sortedEvents = events.sortedBy { it.odometerKm }
-        var latestMileage = 0.0
-        var lastResidualDist = 0.0
+        val sortedEvents = events.sortedWith(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
+        var latestMileageWithCs = 0.0
+        var latestMileageWithoutCs = 0.0
+        var lastResidualDistWithCs = 0.0
+        var lastResidualDistWithoutCs = 0.0
+        var lastColdStartKm = 0.0
+        var lastColdStartsCount = 0
 
         val petrolEvents = sortedEvents.filter {
             (it.type == EventType.REFILL && it.fuelType == FuelType.PETROL) ||
@@ -265,17 +289,22 @@ object CalculationEngines {
                     val lowFuelOdo = event.odometerKm
                     if (lowFuelOdo > sessionStartOdo) {
                         val grossDist = lowFuelOdo - sessionStartOdo
-                        val cngDistInInterval = calculateCngDistanceInInterval(
+                        val cngAnalysis = calculateCngIntervalAnalysis(
                             events = sortedEvents,
                             startOdo = sessionStartOdo,
                             endOdo = lowFuelOdo,
                             vehicle = vehicle
                         )
-                        val petrolDist = max(0.0, grossDist - cngDistInInterval)
+                        val petrolDistWithCs = max(0.0, grossDist - cngAnalysis.netCngDistance)
+                        val petrolDistWithoutCs = max(0.0, grossDist - cngAnalysis.rawCngDistance)
 
-                        if (petrolDist > 0 && sessionAccumulatedQty > 0) {
-                            latestMileage = petrolDist / sessionAccumulatedQty
-                            lastResidualDist = petrolDist
+                        if (sessionAccumulatedQty > 0) {
+                            latestMileageWithCs = petrolDistWithCs / sessionAccumulatedQty
+                            latestMileageWithoutCs = petrolDistWithoutCs / sessionAccumulatedQty
+                            lastResidualDistWithCs = petrolDistWithCs
+                            lastResidualDistWithoutCs = petrolDistWithoutCs
+                            lastColdStartKm = cngAnalysis.coldStartKm
+                            lastColdStartsCount = cngAnalysis.coldStartsCount
                         }
                     }
                     // Session completes on low fuel
@@ -286,44 +315,68 @@ object CalculationEngines {
         }
 
         // Active distance on current petrol session if still ongoing
-        val residualDist = if (sessionStartOdo != null) {
-            val cngDistInInterval = calculateCngDistanceInInterval(
+        var activeDistWithCs = lastResidualDistWithCs
+        var activeDistWithoutCs = lastResidualDistWithoutCs
+        var activeColdStartKm = lastColdStartKm
+        var activeColdStartsCount = lastColdStartsCount
+
+        if (sessionStartOdo != null) {
+            val grossDist = max(0.0, currentOdometer - sessionStartOdo)
+            val cngAnalysis = calculateCngIntervalAnalysis(
                 events = sortedEvents,
                 startOdo = sessionStartOdo,
                 endOdo = currentOdometer,
                 vehicle = vehicle
             )
-            max(0.0, (currentOdometer - sessionStartOdo) - cngDistInInterval)
-        } else {
-            lastResidualDist
+            activeDistWithCs = max(0.0, grossDist - cngAnalysis.netCngDistance)
+            activeDistWithoutCs = max(0.0, grossDist - cngAnalysis.rawCngDistance)
+            activeColdStartKm = cngAnalysis.coldStartKm
+            activeColdStartsCount = cngAnalysis.coldStartsCount
         }
 
-        val estimatedRange = if (latestMileage > 0 && petrolLevelPercent > 0) {
-            (petrolLevelPercent / 100.0) * vehicle.petrolTankCapacityL * latestMileage
+        val rangeWithCs = if (latestMileageWithCs > 0 && petrolLevelPercent > 0) {
+            (petrolLevelPercent / 100.0) * vehicle.petrolTankCapacityL * latestMileageWithCs
+        } else {
+            0.0
+        }
+
+        val rangeWithoutCs = if (latestMileageWithoutCs > 0 && petrolLevelPercent > 0) {
+            (petrolLevelPercent / 100.0) * vehicle.petrolTankCapacityL * latestMileageWithoutCs
         } else {
             0.0
         }
 
         return PetrolEfficiencyResult(
-            latestMileageKmPerL = latestMileage,
-            residualDistanceKm = residualDist,
-            estimatedRangeKm = estimatedRange
+            latestMileageKmPerL = latestMileageWithCs,
+            mileageWithColdStartKmPerL = latestMileageWithCs,
+            mileageWithoutColdStartKmPerL = latestMileageWithoutCs,
+            residualDistanceKm = activeDistWithCs,
+            residualDistanceWithoutColdStartKm = activeDistWithoutCs,
+            estimatedRangeKm = rangeWithCs,
+            estimatedRangeWithColdStartKm = rangeWithCs,
+            estimatedRangeWithoutColdStartKm = rangeWithoutCs,
+            totalColdStartKm = activeColdStartKm,
+            totalColdStartsCount = activeColdStartsCount
         )
     }
 
-    private fun calculateCngDistanceInInterval(
+    private fun calculateCngIntervalAnalysis(
         events: List<FuelEvent>,
         startOdo: Double,
         endOdo: Double,
         vehicle: VehicleMeta
-    ): Double {
-        if (endOdo <= startOdo) return 0.0
+    ): CngIntervalAnalysis {
+        if (endOdo <= startOdo) return CngIntervalAnalysis(0.0, 0.0, 0.0, 0)
 
         val cngEvents = events.filter {
             (it.type == EventType.REFILL && it.fuelType == FuelType.CNG) || it.type == EventType.CNG_EMPTY
-        }.sortedBy { it.odometerKm }
+        }.sortedWith(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
 
-        var totalCngDistance = 0.0
+        var totalRawCngDistance = 0.0
+        var totalNetCngDistance = 0.0
+        var totalColdStartKm = 0.0
+        var totalColdStartsCount = 0
+
         var activeCngStart: Double? = null
         var activeColdStarts = 0
 
@@ -346,9 +399,13 @@ object CalculationEngines {
                         val rawOverlap = overlapEnd - overlapStart
                         val totalCycleDist = max(1.0, cngEnd - cngStart)
                         val overlapRatio = rawOverlap / totalCycleDist
-                        val deduction = activeColdStarts * vehicle.estimatedWarmupDistanceKmPerColdStart * overlapRatio
-                        val netOverlap = max(0.0, rawOverlap - deduction)
-                        totalCngDistance += netOverlap
+                        val coldStartDeduction = activeColdStarts * vehicle.estimatedWarmupDistanceKmPerColdStart * overlapRatio
+                        val netOverlap = max(0.0, rawOverlap - coldStartDeduction)
+
+                        totalRawCngDistance += rawOverlap
+                        totalNetCngDistance += netOverlap
+                        totalColdStartKm += coldStartDeduction
+                        totalColdStartsCount += (activeColdStarts * overlapRatio).toInt()
                     }
 
                     activeCngStart = null
@@ -363,11 +420,24 @@ object CalculationEngines {
             val overlapEnd = endOdo
             if (overlapEnd > overlapStart) {
                 val rawOverlap = overlapEnd - overlapStart
-                val deduction = activeColdStarts * vehicle.estimatedWarmupDistanceKmPerColdStart
-                totalCngDistance += max(0.0, rawOverlap - deduction)
+                val coldStartDeduction = activeColdStarts * vehicle.estimatedWarmupDistanceKmPerColdStart
+                val netOverlap = max(0.0, rawOverlap - coldStartDeduction)
+
+                totalRawCngDistance += rawOverlap
+                totalNetCngDistance += netOverlap
+                totalColdStartKm += coldStartDeduction
+                totalColdStartsCount += activeColdStarts
             }
         }
 
-        return min(totalCngDistance, endOdo - startOdo)
+        val clampedRaw = min(totalRawCngDistance, endOdo - startOdo)
+        val clampedNet = min(totalNetCngDistance, endOdo - startOdo)
+
+        return CngIntervalAnalysis(
+            rawCngDistance = clampedRaw,
+            netCngDistance = clampedNet,
+            coldStartKm = totalColdStartKm,
+            coldStartsCount = totalColdStartsCount
+        )
     }
 }

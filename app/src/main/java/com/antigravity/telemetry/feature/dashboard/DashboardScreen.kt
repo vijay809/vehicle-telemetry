@@ -320,26 +320,36 @@ fun DashboardScreen(
                         )
 
                         PetrolEfficiencyCard(
-                            mileageKmPerL = state.petrolEfficiency.latestMileageKmPerL,
+                            mileageKmPerL = state.displayedPetrolMileageKmPerL,
                             petrolPercent = state.telemetry.petrolPercent, // Only shown if reported by vehicle hardware
-                            estimatedRangeKm = state.petrolEfficiency.estimatedRangeKm,
+                            estimatedRangeKm = state.displayedPetrolEstimatedRangeKm,
+                            currentTripKm = state.displayedPetrolCurrentTripKm,
                             isPetrolActive = false,
                             onMarkLowFuel = { viewModel.markPetrolLowFuel(state.telemetry.odometerKm) },
                             isLowFuelMarked = state.isLowFuelPetrolMarked,
                             lowFuelOdometerKm = state.lowFuelPetrolOdoKm,
-                            lastFill = state.lastPetrolRefill
+                            lastFill = state.lastPetrolRefill,
+                            includeColdStart = state.isPetrolColdStartIncluded,
+                            onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
+                            coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
+                            totalColdStarts = state.petrolEfficiency.totalColdStartsCount
                         )
                     } else {
                         // Petrol Active (CNG Exhausted -> CNG Greyed Out & Placed Below)
                         PetrolEfficiencyCard(
-                            mileageKmPerL = state.petrolEfficiency.latestMileageKmPerL,
+                            mileageKmPerL = state.displayedPetrolMileageKmPerL,
                             petrolPercent = state.telemetry.petrolPercent,
-                            estimatedRangeKm = state.petrolEfficiency.estimatedRangeKm,
+                            estimatedRangeKm = state.displayedPetrolEstimatedRangeKm,
+                            currentTripKm = state.displayedPetrolCurrentTripKm,
                             isPetrolActive = true,
                             onMarkLowFuel = { viewModel.markPetrolLowFuel(state.telemetry.odometerKm) },
                             isLowFuelMarked = state.isLowFuelPetrolMarked,
                             lowFuelOdometerKm = state.lowFuelPetrolOdoKm,
-                            lastFill = state.lastPetrolRefill
+                            lastFill = state.lastPetrolRefill,
+                            includeColdStart = state.isPetrolColdStartIncluded,
+                            onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
+                            coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
+                            totalColdStarts = state.petrolEfficiency.totalColdStartsCount
                         )
 
                         CngEfficiencyCard(

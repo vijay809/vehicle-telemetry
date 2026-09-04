@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Propane
@@ -23,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import java.util.Locale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -336,15 +338,93 @@ fun CngEfficiencyCard(
 }
 
 @Composable
+fun PetrolColdStartToggle(
+    includeColdStart: Boolean,
+    onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(PetrolPastelBg)
+            .border(1.dp, PetrolPastelBorder.copy(alpha = 0.8f), CircleShape)
+            .padding(2.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(1.dp)
+        ) {
+            // "w/ Cold Start" segment
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (includeColdStart) SurfaceWhite else Color.Transparent)
+                    .then(
+                        if (includeColdStart) Modifier.shadow(1.dp, CircleShape, spotColor = Color(0x1AD97706))
+                        else Modifier
+                    )
+                    .clickable { onToggle(true) }
+                    .padding(horizontal = 7.dp, vertical = 3.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AcUnit,
+                        contentDescription = null,
+                        tint = if (includeColdStart) PetrolAccent else SlateTextFaint,
+                        modifier = Modifier.size(10.dp)
+                    )
+                    Text(
+                        text = "w/ CS",
+                        fontSize = 10.sp,
+                        fontWeight = if (includeColdStart) FontWeight.Bold else FontWeight.Medium,
+                        color = if (includeColdStart) PetrolAccent else SlateTextMuted
+                    )
+                }
+            }
+
+            // "w/o Cold Start" segment
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (!includeColdStart) SurfaceWhite else Color.Transparent)
+                    .then(
+                        if (!includeColdStart) Modifier.shadow(1.dp, CircleShape, spotColor = Color(0x1AD97706))
+                        else Modifier
+                    )
+                    .clickable { onToggle(false) }
+                    .padding(horizontal = 7.dp, vertical = 3.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "w/o",
+                    fontSize = 10.sp,
+                    fontWeight = if (!includeColdStart) FontWeight.Bold else FontWeight.Medium,
+                    color = if (!includeColdStart) PetrolAccent else SlateTextMuted
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun PetrolEfficiencyCard(
     mileageKmPerL: Double,
     petrolPercent: Double?, // Nullable: only shown if reported by vehicle hardware
     estimatedRangeKm: Double,
+    currentTripKm: Double = 0.0,
     isPetrolActive: Boolean = false,
     onMarkLowFuel: (() -> Unit)? = null,
     isLowFuelMarked: Boolean = false,
     lowFuelOdometerKm: Double? = null,
     lastFill: FuelEvent? = null,
+    includeColdStart: Boolean = true,
+    onToggleColdStart: ((Boolean) -> Unit)? = null,
+    coldStartDeductionKm: Double = 0.0,
+    totalColdStarts: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -364,7 +444,7 @@ fun PetrolEfficiencyCard(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Top row
+            // Top row: Title on left, Cold Start Toggle & Status Badge on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -396,23 +476,33 @@ fun PetrolEfficiencyCard(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(PetrolBadge)
-                        .border(1.dp, PetrolPastelBorder.copy(alpha = 0.6f), CircleShape)
-                        .padding(horizontal = 10.dp, vertical = 3.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = if (isPetrolActive) "In Use (Primary)" else "Active Reserve",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PetrolAccent
+                    PetrolColdStartToggle(
+                        includeColdStart = includeColdStart,
+                        onToggle = { onToggleColdStart?.invoke(it) }
                     )
+
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(PetrolBadge)
+                            .border(1.dp, PetrolPastelBorder.copy(alpha = 0.6f), CircleShape)
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = if (isPetrolActive) "In Use" else "Reserve",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PetrolAccent
+                        )
+                    }
                 }
             }
 
-            // Middle row
+            // Middle row: Large km/L on left, CURRENT TRIP on right (symmetrical with CNG card)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -423,7 +513,7 @@ fun PetrolEfficiencyCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = if (mileageKmPerL > 0) String.format("%.1f", mileageKmPerL) else "--",
+                        text = if (mileageKmPerL > 0) String.format(Locale.US, "%.1f", mileageKmPerL) else "--",
                         fontSize = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = SlateTextMain,
@@ -438,22 +528,20 @@ fun PetrolEfficiencyCard(
                     )
                 }
 
-                if (estimatedRangeKm > 0) {
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            text = "EST. RANGE",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp,
-                            color = SlateTextFaint
-                        )
-                        Text(
-                            text = "~${String.format("%.0f", estimatedRangeKm)} km",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PetrolAccent
-                        )
-                    }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "CURRENT TRIP",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+                        color = SlateTextFaint
+                    )
+                    Text(
+                        text = "${String.format(Locale.US, "%.0f", currentTripKm)} km",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PetrolAccent
+                    )
                 }
             }
 
@@ -487,17 +575,32 @@ fun PetrolEfficiencyCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "${String.format("%.0f", petrolPercent)}% remaining (approx ${String.format("%.1f", remainingLiters)} L)",
+                        text = "${String.format(Locale.US, "%.0f", petrolPercent)}% remaining (approx ${String.format(Locale.US, "%.1f", remainingLiters)} L)",
                         fontSize = 11.sp,
                         color = SlateTextMuted
                     )
-                    Text(
-                        text = "1.2 km/cold start adj",
-                        fontSize = 10.sp,
-                        color = SlateTextFaint
-                    )
+                    if (estimatedRangeKm > 0) {
+                        Text(
+                            text = "Est. Range: ~${String.format(Locale.US, "%.0f", estimatedRangeKm)} km",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PetrolAccent
+                        )
+                    }
                 }
             }
+
+            // Cold Start Adjustment Footnote
+            Text(
+                text = if (includeColdStart) {
+                    if (coldStartDeductionKm > 0) "+${String.format(Locale.US, "%.1f", coldStartDeductionKm)} km cold start warmup credited ($totalColdStarts starts)"
+                    else "1.2 km/cold start adj included"
+                } else {
+                    "Pure petrol driving only (cold start warmup excluded)"
+                },
+                fontSize = 10.sp,
+                color = SlateTextFaint
+            )
 
             // Integrated Last Fill Details
             if (lastFill != null) {
