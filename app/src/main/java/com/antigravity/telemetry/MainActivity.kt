@@ -62,13 +62,13 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
 
                 var showRefillSheet by remember { mutableStateOf(false) }
+                var showCngEmptySheet by remember { mutableStateOf(false) }
                 var showSimulatorSheet by remember { mutableStateOf(false) }
                 var refillPrompt by remember { mutableStateOf<StationaryRefillPrompt?>(null) }
 
-                val refillSheetState = rememberModalBottomSheetState(
-                    skipPartiallyExpanded = true,
-                    confirmValueChange = { it != androidx.compose.material3.SheetValue.Hidden }
-                )
+                // All bottom sheets allow slide/swipe down to close
+                val refillSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                val cngEmptySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 val simulatorSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
                 // Listen for heuristic stationary refill prompt
@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
                                 DashboardScreen(
                                     viewModel = dashboardVm,
                                     onNavigateToRefill = { showRefillSheet = true },
-                                    onNavigateToCngEmpty = { navController.navigate("cng_empty") },
+                                    onNavigateToCngEmpty = { showCngEmptySheet = true },
                                     onNavigateToLedger = { navController.navigate("ledger") },
                                     onOpenSimulator = { showSimulatorSheet = true }
                                 )
@@ -152,6 +152,23 @@ class MainActivity : ComponentActivity() {
                             viewModel = refillVm,
                             onDismiss = {
                                 showRefillSheet = false
+                            }
+                        )
+                    }
+                }
+
+                // CNG Empty Alert Bottom Sheet
+                if (showCngEmptySheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showCngEmptySheet = false },
+                        sheetState = cngEmptySheetState,
+                        containerColor = androidx.compose.ui.graphics.Color.Transparent
+                    ) {
+                        val cngEmptyVm = remember { CngEmptyViewModel(repository) }
+                        com.antigravity.telemetry.feature.cngempty.CngEmptyTriggerScreen(
+                            viewModel = cngEmptyVm,
+                            onBack = {
+                                showCngEmptySheet = false
                             }
                         )
                     }

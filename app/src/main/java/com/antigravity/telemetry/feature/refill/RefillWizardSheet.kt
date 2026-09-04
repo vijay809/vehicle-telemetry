@@ -1,5 +1,6 @@
 package com.antigravity.telemetry.feature.refill
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +35,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -211,182 +213,56 @@ fun RefillWizardSheet(
                 }
             }
 
-            // Dual Fuel Pill Switch
+            // Two button row: Left button dismiss (Secondary), right button save (Primary)
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(CircleShape)
-                    .background(SurfaceSubtle)
-                    .border(1.dp, SlateSoft, CircleShape)
-                    .padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // CNG Button
-                val isCng = state.fuelType == FuelType.CNG
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .clip(CircleShape)
-                        .background(if (isCng) CngAccent else Color.Transparent)
-                        .clickable { viewModel.setFuelType(FuelType.CNG) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Propane,
-                            contentDescription = null,
-                            tint = if (isCng) Color.White else SlateTextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = "CNG (KG)",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isCng) Color.White else SlateTextMuted
-                        )
-                    }
-                }
-
-                // Petrol Button
-                val isPet = state.fuelType == FuelType.PETROL
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .clip(CircleShape)
-                        .background(if (isPet) PetrolAccent else Color.Transparent)
-                        .clickable { viewModel.setFuelType(FuelType.PETROL) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.WaterDrop,
-                            contentDescription = null,
-                            tint = if (isPet) Color.White else SlateTextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = "Petrol (L)",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isPet) Color.White else SlateTextMuted
-                        )
-                    }
-                }
-            }
-
-            // Live Odometer Telemetry Card
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(Rounded2xl)
-                    .background(SurfaceSubtle)
-                    .border(1.dp, SlateSoft, Rounded2xl)
-                    .padding(14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedSm)
-                            .background(SurfaceWhite)
-                            .border(1.dp, SlateSoft, RoundedSm),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SyncAlt,
-                            contentDescription = null,
-                            tint = CngAccent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = "ODOMETER READING",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp,
-                                color = SlateTextMuted
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(CngBadge)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Verified,
-                                        contentDescription = null,
-                                        tint = CngAccent,
-                                        modifier = Modifier.size(11.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Text(
-                                        text = "Live OBD",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = CngAccent
-                                    )
-                                }
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                text = String.format("%,.0f", state.odometerKm),
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SlateTextMain
-                            )
-                            Text(
-                                text = "KM",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SlateTextFaint,
-                                modifier = Modifier.padding(bottom = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                Box(
+                OutlinedButton(
+                    onClick = onDismiss,
                     modifier = Modifier
-                        .clip(CircleShape)
-                        .background(SurfaceWhite)
-                        .border(1.dp, SlateSoft, CircleShape)
-                        .clickable {
-                            tempOdoInput = state.odometerKm.toString()
-                            showOdoDialog = true
-                        }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .weight(1f)
+                        .height(44.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = SlateTextMuted),
+                    border = BorderStroke(1.dp, SlateSoft)
                 ) {
                     Text(
-                        text = "Edit",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = SlateTextMain
+                        text = "Dismiss",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SlateTextMuted
                     )
+                }
+
+                val primaryColor = if (state.fuelType == FuelType.CNG) CngAccent else PetrolAccent
+                Button(
+                    onClick = { viewModel.saveRefill(onSuccess = onDismiss) },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .shadow(4.dp, CircleShape, spotColor = primaryColor.copy(alpha = 0.3f)),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CloudUpload,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White
+                        )
+                        Text(
+                            text = "Save",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
 
@@ -805,6 +681,185 @@ fun RefillWizardSheet(
                 }
             }
 
+            // Dual Fuel Pill Switch
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(CircleShape)
+                    .background(SurfaceSubtle)
+                    .border(1.dp, SlateSoft, CircleShape)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                // CNG Button
+                val isCng = state.fuelType == FuelType.CNG
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(CircleShape)
+                        .background(if (isCng) CngAccent else Color.Transparent)
+                        .clickable { viewModel.setFuelType(FuelType.CNG) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Propane,
+                            contentDescription = null,
+                            tint = if (isCng) Color.White else SlateTextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "CNG (KG)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isCng) Color.White else SlateTextMuted
+                        )
+                    }
+                }
+
+                // Petrol Button
+                val isPet = state.fuelType == FuelType.PETROL
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(CircleShape)
+                        .background(if (isPet) PetrolAccent else Color.Transparent)
+                        .clickable { viewModel.setFuelType(FuelType.PETROL) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.WaterDrop,
+                            contentDescription = null,
+                            tint = if (isPet) Color.White else SlateTextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Petrol (L)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isPet) Color.White else SlateTextMuted
+                        )
+                    }
+                }
+            }
+
+            // Live Odometer Telemetry Card
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(Rounded2xl)
+                    .background(SurfaceSubtle)
+                    .border(1.dp, SlateSoft, Rounded2xl)
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(RoundedSm)
+                            .background(SurfaceWhite)
+                            .border(1.dp, SlateSoft, RoundedSm),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SyncAlt,
+                            contentDescription = null,
+                            tint = CngAccent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = "ODOMETER READING",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                                color = SlateTextMuted
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(CngBadge)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Verified,
+                                        contentDescription = null,
+                                        tint = CngAccent,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = "Live OBD",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CngAccent
+                                    )
+                                }
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.Bottom,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                text = String.format("%,.0f", state.odometerKm),
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SlateTextMain
+                            )
+                            Text(
+                                text = "KM",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SlateTextFaint,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(SurfaceWhite)
+                        .border(1.dp, SlateSoft, CircleShape)
+                        .clickable {
+                            tempOdoInput = state.odometerKm.toString()
+                            showOdoDialog = true
+                        }
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "Edit",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SlateTextMain
+                    )
+                }
+            }
+
             // Detected Station Card
             Row(
                 modifier = Modifier
@@ -854,47 +909,6 @@ fun RefillWizardSheet(
                         text = "Noida Metro Corridor",
                         fontSize = 11.sp,
                         color = SlateTextFaint
-                    )
-                }
-            }
-
-            // Actions: Save Refill & Dismiss
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
-                    onClick = { viewModel.saveRefill(onSuccess = onDismiss) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
-                        .shadow(6.dp, CircleShape, spotColor = Color(0x3010B981)),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = CngAccent)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.CloudUpload, contentDescription = null)
-                        Text(
-                            text = "Save Refill Event",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-
-                TextButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Dismiss",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SlateTextMuted
                     )
                 }
             }

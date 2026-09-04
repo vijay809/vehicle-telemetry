@@ -90,6 +90,136 @@ fun DashboardScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = CanvasLavender,
+        topBar = {
+            // Pinned Non-Scrolling Top Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(CanvasLavender)
+                    .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(RoundedSm)
+                            .background(CngBadge)
+                            .border(1.dp, CngPastelBorder, RoundedSm),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "VC",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CngAccent
+                        )
+                    }
+
+                    Column {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = state.vehicle.name,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SlateTextMain
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(CngPastelBg)
+                                    .border(1.dp, CngPastelBorder, CircleShape)
+                                    .padding(horizontal = 7.dp, vertical = 2.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(CngAccent)
+                                            .alpha(pulseAlpha)
+                                    )
+                                    Text(
+                                        text = "Live Sync",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CngAccent
+                                    )
+                                }
+                            }
+                        }
+                        Text(
+                            text = "Synced via Android Auto",
+                            fontSize = 11.sp,
+                            color = SlateTextMuted
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Odometer Pill with Increased Text Size
+                    Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(SurfaceWhite)
+                            .border(1.dp, SlateSoft, CircleShape)
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = null,
+                            tint = SlateTextMuted,
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Text(
+                            text = String.format(java.util.Locale.US, "%,.0f", state.telemetry.odometerKm),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = SlateTextMain
+                        )
+                        Text(
+                            text = "km",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = SlateTextFaint
+                        )
+                    }
+
+                    // Simulator Trigger Button
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceWhite)
+                            .border(1.dp, SlateSoft, CircleShape)
+                            .clickable(onClick = onOpenSimulator),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = "Simulator",
+                            tint = SlateTextMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        },
         bottomBar = {
             FloatingQuickActionDock(
                 onCngEmptyClick = onNavigateToCngEmpty,
@@ -102,137 +232,9 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
+            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Airy Light Header
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(42.dp)
-                                .clip(RoundedSm)
-                                .background(CngBadge)
-                                .border(1.dp, CngPastelBorder, RoundedSm),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "VC",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CngAccent
-                            )
-                        }
-
-                        Column {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = state.vehicle.name,
-                                    fontSize = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SlateTextMain
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .background(CngPastelBg)
-                                        .border(1.dp, CngPastelBorder, CircleShape)
-                                        .padding(horizontal = 7.dp, vertical = 2.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(6.dp)
-                                                .clip(CircleShape)
-                                                .background(CngAccent)
-                                                .alpha(pulseAlpha)
-                                        )
-                                        Text(
-                                            text = "Live Sync",
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = CngAccent
-                                        )
-                                    }
-                                }
-                            }
-                            Text(
-                                text = "Synced via Android Auto",
-                                fontSize = 11.sp,
-                                color = SlateTextMuted
-                            )
-                        }
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Odometer Pill
-                        Row(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(SurfaceWhite)
-                                .border(1.dp, SlateSoft, CircleShape)
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Speed,
-                                contentDescription = null,
-                                tint = SlateTextMuted,
-                                modifier = Modifier.size(15.dp)
-                            )
-                            Text(
-                                text = String.format("%,.0f", state.telemetry.odometerKm),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = SlateTextMain
-                            )
-                            Text(
-                                text = "km",
-                                fontSize = 11.sp,
-                                color = SlateTextFaint
-                            )
-                        }
-
-                        // Simulator Trigger Button
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(SurfaceWhite)
-                                .border(1.dp, SlateSoft, CircleShape)
-                                .clickable(onClick = onOpenSimulator),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Tune,
-                                contentDescription = "Simulator",
-                                tint = SlateTextMuted,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                }
-            }
 
             // Top Live Status Capsule
             item {
