@@ -70,16 +70,22 @@ class DashboardViewModel(private val repository: TelemetryRepository) : ViewMode
 
         val blended = CalculationEngines.calculateBlendedCost(events, currentOdo)
         val cng = CalculationEngines.calculateCngEfficiency(events, activeVehicle, currentOdo)
-        val pet = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdo, telemetry.petrolPercent ?: 0.0)
+        val pet = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdo, telemetry.petrolPercent ?: 0.0, activeVehicle)
         val recent = events.firstOrNull { it.type == EventType.REFILL }
         val lastCng = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == com.antigravity.telemetry.core.model.FuelType.CNG }
         val lastPet = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == com.antigravity.telemetry.core.model.FuelType.PETROL }
 
-        val lastPetrolEvent = events.firstOrNull {
-            it.type == EventType.FUEL_LOW || (it.type == EventType.REFILL && it.fuelType == com.antigravity.telemetry.core.model.FuelType.PETROL)
+        val lastPetrolRefillEvent = events.filter { it.type == EventType.REFILL && it.fuelType == com.antigravity.telemetry.core.model.FuelType.PETROL }
+            .maxWithOrNull(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
+        val lastPetrolLowFuel = events.filter { it.type == EventType.FUEL_LOW && it.fuelType == com.antigravity.telemetry.core.model.FuelType.PETROL }
+            .maxWithOrNull(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
+
+        val isLowFuel = when {
+            lastPetrolLowFuel == null -> false
+            lastPetrolRefillEvent == null -> true
+            else -> lastPetrolLowFuel.timestamp > lastPetrolRefillEvent.timestamp && lastPetrolLowFuel.odometerKm >= lastPetrolRefillEvent.odometerKm
         }
-        val isLowFuel = lastPetrolEvent?.type == EventType.FUEL_LOW
-        val lowFuelOdo = if (isLowFuel) lastPetrolEvent?.odometerKm else null
+        val lowFuelOdo = if (isLowFuel) lastPetrolLowFuel?.odometerKm else null
 
         DashboardUiState(
             vehicle = activeVehicle,

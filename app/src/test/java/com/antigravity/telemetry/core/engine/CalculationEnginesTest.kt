@@ -50,9 +50,9 @@ class CalculationEnginesTest {
     }
 
     @Test
-    fun `Model B pure CNG isolates tank-to-tank efficiency with cold-start deduction`() {
+    fun `Model B pure CNG calculates mileage from refill to empty`() {
         val events = listOf(
-            // Full refill at 40,000 km
+            // Refill 9.0 kg at 40,000 km
             FuelEvent(
                 odometerKm = 40000.0,
                 type = EventType.REFILL,
@@ -65,101 +65,238 @@ class CalculationEnginesTest {
                 odometerKm = 40250.0,
                 type = EventType.CNG_EMPTY,
                 coldStartsSinceLastRefill = 3
-            ),
-            // Next refill at 40,260 km, took 8.5 kg to auto-cut
-            FuelEvent(
-                odometerKm = 40260.0,
-                type = EventType.REFILL,
-                fuelType = FuelType.CNG,
-                isFullTank = true,
-                quantity = 8.5
             )
         )
 
         // Raw distance = 40250 - 40000 = 250 km
         // Deduction = 3 cold starts * 1.2 km = 3.6 km
         // Net CNG distance = 250 - 3.6 = 246.4 km
-        // Mileage = 246.4 / 8.5 = 28.988 km/kg
-        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40260.0)
+        // Mileage = 246.4 / 9.0 = 27.377 km/kg
+        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40250.0)
 
         assertEquals(250.0, result.rawDistanceKm, 0.01)
         assertEquals(3.6, result.coldStartDeductionKm, 0.01)
         assertEquals(246.4, result.netCngDistanceKm, 0.01)
-        assertEquals(28.98, result.latestMileageKmPerKg, 0.02)
+        assertEquals(27.38, result.latestMileageKmPerKg, 0.02)
     }
 
     @Test
-    fun `Model B auto-infers CNG empty when refill is 90 percent or more of tank capacity`() {
+    fun `Model B accumulates multiple refills without empty and calculates on next trigger`() {
         val events = listOf(
-            // Full refill at 40,000 km
+            // Refill 1: 5.0 kg at 40,000 km
             FuelEvent(
                 odometerKm = 40000.0,
                 type = EventType.REFILL,
                 fuelType = FuelType.CNG,
-                isFullTank = true,
-                quantity = 9.0
+                quantity = 5.0
             ),
-            // Refill at 40,260 km took 9.5 kg (>= 90% of 10.0 kg tank), no explicit CNG_EMPTY logged
+            // Refill 2: 4.0 kg at 40,100 km (tank not emptied in between)
             FuelEvent(
-                odometerKm = 40260.0,
+                odometerKm = 40100.0,
                 type = EventType.REFILL,
                 fuelType = FuelType.CNG,
-                isFullTank = true,
-                quantity = 9.5,
-                coldStartsSinceLastRefill = 2
+                quantity = 4.0
+            ),
+            // CNG ran out at 40,250 km with 3 cold starts
+            FuelEvent(
+                odometerKm = 40250.0,
+                type = EventType.CNG_EMPTY,
+                coldStartsSinceLastRefill = 3
             )
         )
 
-        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40260.0)
+        // Total qty = 5.0 + 4.0 = 9.0 kg
+        // Raw distance = 40250 - 40000 = 250 km
+        // Deduction = 3 * 1.2 = 3.6 km
+        // Net CNG distance = 246.4 km
+        // Mileage = 246.4 / 9.0 = 27.38 km/kg
+        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40250.0)
 
-        // Inferred empty at 40260 - 2 = 40258
-        // Raw dist = 40258 - 40000 = 258 km
-        // Deduction = 2 * 1.2 = 2.4 km
-        // Net dist = 255.6 km
-        // Mileage = 255.6 / 9.5 = 26.9 km/kg
-        assertEquals(258.0, result.rawDistanceKm, 0.01)
-        assertEquals(2.4, result.coldStartDeductionKm, 0.01)
-        assertEquals(255.6, result.netCngDistanceKm, 0.01)
-        assertEquals(26.9, result.latestMileageKmPerKg, 0.1)
+        assertEquals(250.0, result.rawDistanceKm, 0.01)
+        assertEquals(3.6, result.coldStartDeductionKm, 0.01)
+        assertEquals(246.4, result.netCngDistanceKm, 0.01)
+        assertEquals(27.38, result.latestMileageKmPerKg, 0.02)
     }
 
     @Test
-    fun `Model C calculates residual petrol efficiency between full tank intervals`() {
+    fun `Model C triggers petrol mileage calculation from fill to low fuel`() {
         val events = listOf(
-            // Full petrol fill P_A at 30,000 km
+            // Petrol refill at 30,000 km
             FuelEvent(
                 odometerKm = 30000.0,
                 type = EventType.REFILL,
                 fuelType = FuelType.PETROL,
-                isFullTank = true,
-                quantity = 35.0
+                quantity = 20.0
             ),
-            // Intermediate CNG refills
-            FuelEvent(
-                odometerKm = 30200.0,
-                type = EventType.REFILL,
-                fuelType = FuelType.CNG,
-                isFullTank = true,
-                quantity = 8.0 // covers approx 8 * 26 = 208 km
-            ),
-            // Full petrol top-up P_B at 30,300 km, takes 6.0 L to fill
+            // Low fuel light triggered at 30,300 km
             FuelEvent(
                 odometerKm = 30300.0,
-                type = EventType.REFILL,
-                fuelType = FuelType.PETROL,
-                isFullTank = true,
-                quantity = 6.0
+                type = EventType.FUEL_LOW,
+                fuelType = FuelType.PETROL
             )
         )
 
-        val result = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdometer = 30300.0, petrolLevelPercent = 80.0)
+        val result = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdometer = 30300.0, petrolLevelPercent = 10.0, vehicle = testVehicle)
 
-        // Gross distance = 300 km
-        // CNG approx = 208 km
-        // Residual distance = 300 - 208 = 92 km
-        // Mileage = 92 / 6.0 = 15.33 km/L
-        assertEquals(92.0, result.residualDistanceKm, 0.01)
-        assertEquals(15.33, result.latestMileageKmPerL, 0.05)
-        assertTrue(result.estimatedRangeKm > 0)
+        // Gross distance = 300 km (no CNG used)
+        // Mileage = 300 / 20.0 = 15.0 km/L
+        assertEquals(300.0, result.residualDistanceKm, 0.01)
+        assertEquals(15.0, result.latestMileageKmPerL, 0.01)
+    }
+
+    @Test
+    fun `Model C accumulates multiple petrol refills before low fuel trigger`() {
+        val events = listOf(
+            // Petrol refill 1 at 30,000 km
+            FuelEvent(
+                odometerKm = 30000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.PETROL,
+                quantity = 15.0
+            ),
+            // Petrol refill 2 at 30,100 km (no low fuel in between)
+            FuelEvent(
+                odometerKm = 30100.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.PETROL,
+                quantity = 10.0
+            ),
+            // Low fuel triggered at 30,375 km
+            FuelEvent(
+                odometerKm = 30375.0,
+                type = EventType.FUEL_LOW,
+                fuelType = FuelType.PETROL
+            )
+        )
+
+        val result = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdometer = 30375.0, petrolLevelPercent = 10.0, vehicle = testVehicle)
+
+        // Total qty = 15 + 10 = 25 L
+        // Gross distance = 375 km
+        // Mileage = 375 / 25 = 15.0 km/L
+        assertEquals(375.0, result.residualDistanceKm, 0.01)
+        assertEquals(15.0, result.latestMileageKmPerL, 0.01)
+    }
+
+    @Test
+    fun `Model C subtracts CNG distance driven during petrol session`() {
+        val events = listOf(
+            // Petrol refill at 30,000 km, 20 L
+            FuelEvent(
+                odometerKm = 30000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.PETROL,
+                quantity = 20.0
+            ),
+            // CNG refill at 30,100 km
+            FuelEvent(
+                odometerKm = 30100.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 5.0
+            ),
+            // CNG ran out at 30,220 km (120 km on CNG)
+            FuelEvent(
+                odometerKm = 30220.0,
+                type = EventType.CNG_EMPTY,
+                coldStartsSinceLastRefill = 0
+            ),
+            // Petrol hits low fuel at 30,420 km
+            FuelEvent(
+                odometerKm = 30420.0,
+                type = EventType.FUEL_LOW,
+                fuelType = FuelType.PETROL
+            )
+        )
+
+        val result = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdometer = 30420.0, petrolLevelPercent = 10.0, vehicle = testVehicle)
+
+        // Gross distance = 420 km
+        // CNG distance = 120 km
+        // Petrol distance = 300 km
+        // Mileage = 300 / 20.0 = 15.0 km/L
+        assertEquals(300.0, result.residualDistanceKm, 0.01)
+        assertEquals(15.0, result.latestMileageKmPerL, 0.01)
+    }
+
+    @Test
+    fun `CNG empty sets isCngExhausted to true`() {
+        val events = listOf(
+            FuelEvent(
+                odometerKm = 40000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 9.0,
+                timestamp = 500L
+            ),
+            FuelEvent(
+                odometerKm = 40250.0,
+                type = EventType.CNG_EMPTY,
+                timestamp = 1000L
+            )
+        )
+
+        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40250.0)
+        assertEquals(true, result.isCngExhausted)
+        assertEquals(40250.0, result.exhaustedAtOdometerKm ?: 0.0, 0.01)
+    }
+
+    @Test
+    fun `CNG refill after CNG empty clears exhausted state even at same odometer`() {
+        val events = listOf(
+            FuelEvent(
+                odometerKm = 40000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 9.0,
+                timestamp = 500L
+            ),
+            FuelEvent(
+                odometerKm = 40250.0,
+                type = EventType.CNG_EMPTY,
+                timestamp = 1000L
+            ),
+            FuelEvent(
+                odometerKm = 40250.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 8.5,
+                timestamp = 2000L
+            )
+        )
+
+        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40250.0)
+        assertEquals(false, result.isCngExhausted)
+        assertEquals(null, result.exhaustedAtOdometerKm)
+    }
+
+    @Test
+    fun `CNG refill after CNG empty clears exhausted state when refilled at higher odometer`() {
+        val events = listOf(
+            FuelEvent(
+                odometerKm = 40000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 9.0,
+                timestamp = 500L
+            ),
+            FuelEvent(
+                odometerKm = 40250.0,
+                type = EventType.CNG_EMPTY,
+                timestamp = 1000L
+            ),
+            FuelEvent(
+                odometerKm = 40260.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 8.5,
+                timestamp = 2000L
+            )
+        )
+
+        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40265.0)
+        assertEquals(false, result.isCngExhausted)
+        assertEquals(null, result.exhaustedAtOdometerKm)
+        assertEquals(5.0, result.currentTripKm, 0.01) // 40265 - 40260
     }
 }

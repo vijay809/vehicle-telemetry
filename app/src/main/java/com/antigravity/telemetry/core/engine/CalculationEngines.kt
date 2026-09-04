@@ -5,6 +5,7 @@ import com.antigravity.telemetry.core.model.FuelEvent
 import com.antigravity.telemetry.core.model.FuelType
 import com.antigravity.telemetry.core.model.VehicleMeta
 import kotlin.math.max
+import kotlin.math.min
 
 data class BlendedCostResult(
     val blendedCostPerKm: Double,
@@ -104,74 +105,106 @@ object CalculationEngines {
     }
 
     /**
-     * Model B: Pure CNG Tank-to-Tank (Full-to-Empty Cycle)
-     * Isolates CNG thermodynamic efficiency by tracking boundary conditions:
-     * Full Refill (E1) -> Driving Interval -> CNG_EMPTY (E2) -> Next Refill (E3)
+     * Model B: Pure CNG Tank-to-Tank (Refill to Empty)
+     * Isolates CNG thermodynamic efficiency:
+     * - A session begins on CNG Refill.
+     * - If more CNG is refilled without emptying the tank, the session continues and quantities accumulate (Rule 3).
+     * - When CNG Empty occurs, the trigger calculates:
+     *   Mileage (km/kg) = (Odo_empty - Odo_session_start - cold_start_deduction) / Total_CNG_Quantity (Rule 1)
      */
     fun calculateCngEfficiency(
         events: List<FuelEvent>,
         vehicle: VehicleMeta,
         currentOdometer: Double
     ): CngEfficiencyResult {
-        val sortedEvents = events.sortedBy { it.odometerKm }
+        val sortedEvents = events.sortedWith(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
         var latestMileage = 0.0
         var lastCompletedRawDist = 0.0
         var lastCompletedDeduction = 0.0
         var lastCompletedNetDist = 0.0
 
-        // Find consecutive CNG full-refill cycles
+        // Track CNG sessions
         val cngEvents = sortedEvents.filter {
             (it.type == EventType.REFILL && it.fuelType == FuelType.CNG) || it.type == EventType.CNG_EMPTY
         }
 
-        for (i in 0 until cngEvents.size - 1) {
-            val curr = cngEvents[i]
-            val next = cngEvents[i + 1]
+        var sessionStartOdo: Double? = null
+        var sessionAccumulatedQty = 0.0
+        var sessionColdStarts = 0
 
-            // Pattern 1: Refill (Full) -> CNG_EMPTY -> Subsequent Refill
-            if (curr.type == EventType.REFILL && curr.fuelType == FuelType.CNG && curr.isFullTank) {
-                var emptyOdo: Double? = null
-                var coldStarts = 0
-
-                if (next.type == EventType.CNG_EMPTY) {
-                    emptyOdo = next.odometerKm
-                    coldStarts = next.coldStartsSinceLastRefill
-                } else if (next.type == EventType.REFILL && next.fuelType == FuelType.CNG) {
-                    // Heuristic Edge Case: Unregistered empty, but refill >= 90% capacity
-                    val refillQty = next.quantity ?: 0.0
-                    if (refillQty >= vehicle.cngTankCapacityKg * 0.90) {
-                        emptyOdo = next.odometerKm - 2.0
-                        coldStarts = next.coldStartsSinceLastRefill
+        for (event in cngEvents) {
+            if (event.type == EventType.REFILL && event.fuelType == FuelType.CNG) {
+                val qty = event.quantity ?: 0.0
+                if (qty > 0) {
+                    // Check if previous session was never explicitly marked empty,
+                    // but this refill is >= 90% capacity (inferred empty)
+                    if (sessionStartOdo != null && sessionAccumulatedQty > 0 &&
+                        qty >= vehicle.cngTankCapacityKg * 0.90 &&
+                        (event.odometerKm - sessionStartOdo) > 50.0
+                    ) {
+                        val inferredEmptyOdo = event.odometerKm - 2.0
+                        val rawDist = inferredEmptyOdo - sessionStartOdo
+                        val deduction = (sessionColdStarts + event.coldStartsSinceLastRefill) * vehicle.estimatedWarmupDistanceKmPerColdStart
+                        val netDist = max(0.0, rawDist - deduction)
+                        if (netDist > 0 && sessionAccumulatedQty > 0) {
+                            latestMileage = netDist / sessionAccumulatedQty
+                            lastCompletedRawDist = rawDist
+                            lastCompletedDeduction = deduction
+                            lastCompletedNetDist = netDist
+                        }
+                        // Reset session with new refill
+                        sessionStartOdo = event.odometerKm
+                        sessionAccumulatedQty = qty
+                        sessionColdStarts = 0
+                    } else {
+                        // Rule 3: Keep session going across top-ups without emptying
+                        if (sessionStartOdo == null) {
+                            sessionStartOdo = event.odometerKm
+                        }
+                        sessionAccumulatedQty += qty
+                        sessionColdStarts += event.coldStartsSinceLastRefill
                     }
                 }
+            } else if (event.type == EventType.CNG_EMPTY) {
+                // Rule 1: Trigger calculation on empty
+                if (sessionStartOdo != null && sessionAccumulatedQty > 0) {
+                    val emptyOdo = event.odometerKm
+                    if (emptyOdo > sessionStartOdo) {
+                        val rawDist = emptyOdo - sessionStartOdo
+                        val totalColdStarts = sessionColdStarts + event.coldStartsSinceLastRefill
+                        val deduction = totalColdStarts * vehicle.estimatedWarmupDistanceKmPerColdStart
+                        val netDist = max(0.0, rawDist - deduction)
 
-                if (emptyOdo != null && emptyOdo > curr.odometerKm) {
-                    val rawDist = emptyOdo - curr.odometerKm
-                    val deduction = coldStarts * vehicle.estimatedWarmupDistanceKmPerColdStart
-                    val netDist = max(0.0, rawDist - deduction)
-
-                    // If subsequent refill is available to calculate km/kg
-                    val subsequentRefill = cngEvents.subList(i + 1, cngEvents.size)
-                        .firstOrNull { it.type == EventType.REFILL && it.fuelType == FuelType.CNG }
-
-                    if (subsequentRefill != null && (subsequentRefill.quantity ?: 0.0) > 0) {
-                        latestMileage = netDist / (subsequentRefill.quantity ?: 1.0)
+                        latestMileage = netDist / sessionAccumulatedQty
                         lastCompletedRawDist = rawDist
                         lastCompletedDeduction = deduction
                         lastCompletedNetDist = netDist
                     }
+                    // Session complete on empty
+                    sessionStartOdo = null
+                    sessionAccumulatedQty = 0.0
+                    sessionColdStarts = 0
                 }
             }
         }
 
-        // Active Trip Odometer on CNG
-        val lastCngRefill = sortedEvents.lastOrNull { it.type == EventType.REFILL && it.fuelType == FuelType.CNG }
-        val lastCngEmpty = sortedEvents.lastOrNull { it.type == EventType.CNG_EMPTY }
+        // Active Trip Odometer and Exhausted state on CNG:
+        // A refill MUST clear the exhausted state (refill takes precedence over previous empty)
+        val lastCngRefill = cngEvents.filter { it.type == EventType.REFILL && it.fuelType == FuelType.CNG }
+            .maxWithOrNull(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
+        val lastCngEmpty = cngEvents.filter { it.type == EventType.CNG_EMPTY }
+            .maxWithOrNull(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
 
-        val isCngExhausted = lastCngEmpty != null && (lastCngRefill == null || lastCngEmpty.odometerKm >= lastCngRefill.odometerKm)
+        val isCngExhausted = when {
+            lastCngEmpty == null -> false
+            lastCngRefill == null -> true
+            else -> lastCngEmpty.timestamp > lastCngRefill.timestamp && lastCngEmpty.odometerKm >= lastCngRefill.odometerKm
+        }
         val exhaustedAtOdo = if (isCngExhausted) lastCngEmpty?.odometerKm else null
 
-        val currentTrip = if (lastCngRefill != null) {
+        val currentTrip = if (sessionStartOdo != null) {
+            max(0.0, currentOdometer - sessionStartOdo)
+        } else if (lastCngRefill != null && !isCngExhausted) {
             max(0.0, currentOdometer - lastCngRefill.odometerKm)
         } else {
             0.0
@@ -189,59 +222,152 @@ object CalculationEngines {
     }
 
     /**
-     * Model C: Subtractive Residual Petrol Mileage
-     * Bounded by two Full Tank petrol events (P_A and P_B):
-     * Delta D_total = O(P_B) - O(P_A)
-     * D_petrol_residual = Delta D_total - sum(D_cng_total)
-     * Mileage_petrol = D_petrol_residual / Q_petrol_topup
+     * Model C: Petrol Efficiency (Fill to Low Fuel)
+     * Calculates Petrol efficiency:
+     * - A session begins on Petrol Refill.
+     * - If more Petrol is refilled without hitting Low Fuel, the session continues and quantities accumulate (Rule 3).
+     * - When Low Fuel occurs (FUEL_LOW event), the trigger calculates:
+     *   Gross Distance = Odo_low_fuel - Odo_session_start
+     *   Net Petrol Distance = Gross Distance - sum(CNG distance in interval)
+     *   Mileage (km/L) = Net Petrol Distance / Total_Petrol_Quantity (Rule 2)
      */
     fun calculateResidualPetrolEfficiency(
         events: List<FuelEvent>,
         currentOdometer: Double,
-        petrolLevelPercent: Double
+        petrolLevelPercent: Double,
+        vehicle: VehicleMeta = VehicleMeta()
     ): PetrolEfficiencyResult {
-        val sortedPetrolRefills = events.filter {
-            it.type == EventType.REFILL && it.fuelType == FuelType.PETROL && it.isFullTank
-        }.sortedBy { it.odometerKm }
+        val sortedEvents = events.sortedBy { it.odometerKm }
+        var latestMileage = 0.0
+        var lastResidualDist = 0.0
 
-        var mileage = 0.0
-        var residualDist = 0.0
+        val petrolEvents = sortedEvents.filter {
+            (it.type == EventType.REFILL && it.fuelType == FuelType.PETROL) ||
+            (it.type == EventType.FUEL_LOW && it.fuelType == FuelType.PETROL)
+        }
 
-        if (sortedPetrolRefills.size >= 2) {
-            val pA = sortedPetrolRefills[sortedPetrolRefills.size - 2]
-            val pB = sortedPetrolRefills.last()
+        var sessionStartOdo: Double? = null
+        var sessionAccumulatedQty = 0.0
 
-            val grossDist = pB.odometerKm - pA.odometerKm
+        for (event in petrolEvents) {
+            if (event.type == EventType.REFILL && event.fuelType == FuelType.PETROL) {
+                val qty = event.quantity ?: 0.0
+                if (qty > 0) {
+                    // Rule 3: Keep session going across top-ups without reaching low fuel
+                    if (sessionStartOdo == null) {
+                        sessionStartOdo = event.odometerKm
+                    }
+                    sessionAccumulatedQty += qty
+                }
+            } else if (event.type == EventType.FUEL_LOW && event.fuelType == FuelType.PETROL) {
+                // Rule 2: Trigger calculation on Low Fuel
+                if (sessionStartOdo != null && sessionAccumulatedQty > 0) {
+                    val lowFuelOdo = event.odometerKm
+                    if (lowFuelOdo > sessionStartOdo) {
+                        val grossDist = lowFuelOdo - sessionStartOdo
+                        val cngDistInInterval = calculateCngDistanceInInterval(
+                            events = sortedEvents,
+                            startOdo = sessionStartOdo,
+                            endOdo = lowFuelOdo,
+                            vehicle = vehicle
+                        )
+                        val petrolDist = max(0.0, grossDist - cngDistInInterval)
 
-            // Sum CNG segment distances between pA and pB
-            val cngSegmentsBetween = events.filter {
-                it.odometerKm in pA.odometerKm..pB.odometerKm && it.fuelType == FuelType.CNG && it.type == EventType.REFILL
-            }
-
-            var cngTotalDist = 0.0
-            for (cng in cngSegmentsBetween) {
-                // approximate distance covered by CNG using average efficiency or raw intervals
-                cngTotalDist += (cng.quantity ?: 0.0) * 26.0
-            }
-
-            residualDist = max(0.0, grossDist - cngTotalDist)
-            val topupQty = pB.quantity ?: 1.0
-            if (topupQty > 0 && residualDist > 0) {
-                mileage = residualDist / topupQty
+                        if (petrolDist > 0 && sessionAccumulatedQty > 0) {
+                            latestMileage = petrolDist / sessionAccumulatedQty
+                            lastResidualDist = petrolDist
+                        }
+                    }
+                    // Session completes on low fuel
+                    sessionStartOdo = null
+                    sessionAccumulatedQty = 0.0
+                }
             }
         }
 
-        // Estimated Petrol range based on current tank level
-        val estimatedRange = if (mileage > 0 && petrolLevelPercent > 0) {
-            (petrolLevelPercent / 100.0) * 45.0 * mileage
+        // Active distance on current petrol session if still ongoing
+        val residualDist = if (sessionStartOdo != null) {
+            val cngDistInInterval = calculateCngDistanceInInterval(
+                events = sortedEvents,
+                startOdo = sessionStartOdo,
+                endOdo = currentOdometer,
+                vehicle = vehicle
+            )
+            max(0.0, (currentOdometer - sessionStartOdo) - cngDistInInterval)
+        } else {
+            lastResidualDist
+        }
+
+        val estimatedRange = if (latestMileage > 0 && petrolLevelPercent > 0) {
+            (petrolLevelPercent / 100.0) * vehicle.petrolTankCapacityL * latestMileage
         } else {
             0.0
         }
 
         return PetrolEfficiencyResult(
-            latestMileageKmPerL = mileage,
+            latestMileageKmPerL = latestMileage,
             residualDistanceKm = residualDist,
             estimatedRangeKm = estimatedRange
         )
+    }
+
+    private fun calculateCngDistanceInInterval(
+        events: List<FuelEvent>,
+        startOdo: Double,
+        endOdo: Double,
+        vehicle: VehicleMeta
+    ): Double {
+        if (endOdo <= startOdo) return 0.0
+
+        val cngEvents = events.filter {
+            (it.type == EventType.REFILL && it.fuelType == FuelType.CNG) || it.type == EventType.CNG_EMPTY
+        }.sortedBy { it.odometerKm }
+
+        var totalCngDistance = 0.0
+        var activeCngStart: Double? = null
+        var activeColdStarts = 0
+
+        for (event in cngEvents) {
+            if (event.type == EventType.REFILL && event.fuelType == FuelType.CNG) {
+                if (activeCngStart == null) {
+                    activeCngStart = event.odometerKm
+                }
+                activeColdStarts += event.coldStartsSinceLastRefill
+            } else if (event.type == EventType.CNG_EMPTY) {
+                if (activeCngStart != null) {
+                    val cngStart = activeCngStart
+                    val cngEnd = event.odometerKm
+                    activeColdStarts += event.coldStartsSinceLastRefill
+
+                    val overlapStart = max(cngStart, startOdo)
+                    val overlapEnd = min(cngEnd, endOdo)
+
+                    if (overlapEnd > overlapStart) {
+                        val rawOverlap = overlapEnd - overlapStart
+                        val totalCycleDist = max(1.0, cngEnd - cngStart)
+                        val overlapRatio = rawOverlap / totalCycleDist
+                        val deduction = activeColdStarts * vehicle.estimatedWarmupDistanceKmPerColdStart * overlapRatio
+                        val netOverlap = max(0.0, rawOverlap - deduction)
+                        totalCngDistance += netOverlap
+                    }
+
+                    activeCngStart = null
+                    activeColdStarts = 0
+                }
+            }
+        }
+
+        // Active CNG session running up to endOdo
+        if (activeCngStart != null && activeCngStart < endOdo) {
+            val overlapStart = max(activeCngStart, startOdo)
+            val overlapEnd = endOdo
+            if (overlapEnd > overlapStart) {
+                val rawOverlap = overlapEnd - overlapStart
+                val deduction = activeColdStarts * vehicle.estimatedWarmupDistanceKmPerColdStart
+                totalCngDistance += max(0.0, rawOverlap - deduction)
+            }
+        }
+
+        return min(totalCngDistance, endOdo - startOdo)
     }
 }
