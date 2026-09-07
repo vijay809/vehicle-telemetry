@@ -30,37 +30,48 @@ class TelemetryManager(
     private var previousFuelPercent: Double? = null
     private var previousSpeed: Double = 0.0
 
-    fun onSpeedUpdate(speedKmh: Double) {
-        previousSpeed = speedKmh
+    fun onOdometerUpdate(odometerKm: Double) {
+        if (odometerKm > 0.0) {
+            repository.updateActualOdometer(odometerKm)
+        }
     }
 
-    fun onFuelLevelUpdate(currentFuelPercent: Double, currentOdometer: Double) {
+    fun onSpeedUpdate(speedKmh: Double) {
+        previousSpeed = speedKmh
+        repository.updateActualSpeed(speedKmh)
+    }
+
+    fun onFuelLevelUpdate(
+        currentFuelPercent: Double,
+        currentOdometer: Double? = null,
+        isLowFuel: Boolean? = null
+    ) {
+        val odo = currentOdometer ?: repository.getLatestActualOdometer()
         // Stationary Refill Detection Heuristic:
         // If fuel increases by >= 8% while vehicle speed is 0 km/h
         val prev = previousFuelPercent
-        if (prev != null && previousSpeed == 0.0 && currentFuelPercent - prev >= 8.0) {
+        if (prev != null && previousSpeed == 0.0 && (currentFuelPercent - prev) >= 8.0) {
             scope.launch {
                 _refillPromptFlow.emit(
                     StationaryRefillPrompt(
-                        detectedOdometerKm = currentOdometer,
+                        detectedOdometerKm = odo,
                         fuelLevelDeltaPercent = currentFuelPercent - prev
                     )
                 )
             }
         }
         previousFuelPercent = currentFuelPercent
-        repository.updateActualTelemetry(
-            TelemetrySnapshot(
-                odometerKm = currentOdometer,
-                speedKmh = previousSpeed,
-                petrolPercent = currentFuelPercent,
-                cngPressureBar = null,
-                isAutoModeActive = false,
-                isLowFuelWarning = currentFuelPercent <= 15.0,
-                isConnectedToAuto = true,
-                isSimulation = false
-            )
+        repository.updateActualFuel(
+            fuelPercent = currentFuelPercent,
+            isLowFuel = isLowFuel ?: (currentFuelPercent <= 15.0)
         )
+        if (currentOdometer != null && currentOdometer > 0.0) {
+            repository.updateActualOdometer(currentOdometer)
+        }
+    }
+
+    fun onConnectionStateChanged(isConnected: Boolean) {
+        repository.updateActualConnection(isConnected)
     }
 
     fun startDriveSimulation() {

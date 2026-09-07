@@ -72,6 +72,7 @@ fun DashboardScreen(
     onNavigateToCngEmpty: () -> Unit,
     onNavigateToLedger: () -> Unit,
     onOpenSimulator: () -> Unit,
+    onOpenAutoDiagnostics: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -100,23 +101,28 @@ fun DashboardScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val isConnected = state.telemetry.isConnectedToAuto
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .clip(RoundedSm)
+                        .clickable { onOpenAutoDiagnostics() }
                 ) {
                     Box(
                         modifier = Modifier
                             .size(42.dp)
                             .clip(RoundedSm)
-                            .background(CngBadge)
-                            .border(1.dp, CngPastelBorder, RoundedSm),
+                            .background(if (isConnected) CngBadge else Color(0xFFF1F5F9))
+                            .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, RoundedSm),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "VC",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = CngAccent
+                            color = if (isConnected) CngAccent else SlateTextMuted
                         )
                     }
 
@@ -134,8 +140,8 @@ fun DashboardScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(CngPastelBg)
-                                    .border(1.dp, CngPastelBorder, CircleShape)
+                                    .background(if (isConnected) CngPastelBg else Color(0xFFF1F5F9))
+                                    .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, CircleShape)
                                     .padding(horizontal = 7.dp, vertical = 2.dp)
                             ) {
                                 Row(
@@ -146,22 +152,23 @@ fun DashboardScreen(
                                         modifier = Modifier
                                             .size(6.dp)
                                             .clip(CircleShape)
-                                            .background(CngAccent)
-                                            .alpha(pulseAlpha)
+                                            .background(if (isConnected) CngAccent else SlateTextMuted)
+                                            .then(if (isConnected) Modifier.alpha(pulseAlpha) else Modifier)
                                     )
                                     Text(
-                                        text = "Live Sync",
+                                        text = if (isConnected) "Live Sync" else "Disconnected",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = CngAccent
+                                        color = if (isConnected) CngAccent else SlateTextMuted
                                     )
                                 }
                             }
                         }
                         Text(
-                            text = "Synced via Android Auto",
+                            text = if (isConnected) "Synced via Android Auto" else "Tap for telemetry & diagnostics",
                             fontSize = 11.sp,
-                            color = SlateTextMuted
+                            color = if (isConnected) SlateTextMuted else CngAccent,
+                            fontWeight = if (isConnected) FontWeight.Normal else FontWeight.Medium
                         )
                     }
                 }

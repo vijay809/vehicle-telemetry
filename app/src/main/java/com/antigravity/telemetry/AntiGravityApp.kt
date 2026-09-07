@@ -24,5 +24,6 @@ class AntiGravityApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.antigravity.telemetry.core.telemetry.AutoTelemetryLogger.initialize(this)
     }
 }

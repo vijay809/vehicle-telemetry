@@ -3,9 +3,17 @@
 
     <!-- Android for Cars Telemetry Permissions -->
     <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
+    <uses-permission android:name="androidx.car.app.CAR_INFO" />
     <uses-permission android:name="com.google.android.gms.permission.CAR_MILEAGE" />
     <uses-permission android:name="com.google.android.gms.permission.CAR_FUEL" />
     <uses-permission android:name="com.google.android.gms.permission.CAR_SPEED" />
+    <uses-permission android:name="android.car.permission.CAR_MILEAGE" />
+    <uses-permission android:name="android.car.permission.CAR_ENERGY" />
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />
+
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="androidx.car.app.CAR_HARDWARE_LOCATION" />
 
     <application
         android:name=".AntiGravityApp"
@@ -15,6 +23,27 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AntiGravity">
+
+        <!-- FileProvider for Exporting and Emailing Telemetry Logs -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- Android Auto App Descriptor -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <!-- Minimum Car API Level: 3 required for CarHardwareManager & telemetry -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="3" />
 
         <!-- Mobile Phone Activity -->
         <activity
@@ -35,12 +64,9 @@
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.IOT" />
+                <category android:name="androidx.car.app.category.POI" />
             </intent-filter>
         </service>
-
-        <meta-data
-            android:name="androidx.car.app.minCarApiLevel"
-            android:value="1" />
     </application>
 
 </manifest>

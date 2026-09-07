@@ -41,6 +41,8 @@ import com.antigravity.telemetry.feature.ledger.FuelLedgerViewModel
 import com.antigravity.telemetry.feature.refill.RefillViewModel
 import com.antigravity.telemetry.feature.refill.RefillWizardSheet
 import com.antigravity.telemetry.feature.simulator.SimulatorBottomSheet
+import androidx.car.app.connection.CarConnection
+import com.antigravity.telemetry.feature.diagnostics.AutoDiagnosticsBottomSheet
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
@@ -56,6 +58,14 @@ class MainActivity : ComponentActivity() {
         val telemetryManager = app.telemetryManager
         val preferences = app.preferences
 
+        // Monitor Android Auto host connection state from the mobile device
+        val carConnection = CarConnection(this)
+        carConnection.type.observe(this) { type ->
+            val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION ||
+                               type == CarConnection.CONNECTION_TYPE_NATIVE)
+            telemetryManager.onConnectionStateChanged(isConnected)
+        }
+
         setContent {
             AntiGravityTheme {
                 val navController = rememberNavController()
@@ -64,12 +74,14 @@ class MainActivity : ComponentActivity() {
                 var showRefillSheet by remember { mutableStateOf(false) }
                 var showCngEmptySheet by remember { mutableStateOf(false) }
                 var showSimulatorSheet by remember { mutableStateOf(false) }
+                var showAutoDiagnosticsSheet by remember { mutableStateOf(false) }
                 var refillPrompt by remember { mutableStateOf<StationaryRefillPrompt?>(null) }
 
                 // All bottom sheets allow slide/swipe down to close
                 val refillSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 val cngEmptySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 val simulatorSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                val autoDiagnosticsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
                 // Listen for heuristic stationary refill prompt
                 LaunchedEffect(Unit) {
@@ -117,7 +129,8 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToRefill = { showRefillSheet = true },
                                     onNavigateToCngEmpty = { showCngEmptySheet = true },
                                     onNavigateToLedger = { navController.navigate("ledger") },
-                                    onOpenSimulator = { showSimulatorSheet = true }
+                                    onOpenSimulator = { showSimulatorSheet = true },
+                                    onOpenAutoDiagnostics = { showAutoDiagnosticsSheet = true }
                                 )
                             }
 
@@ -199,6 +212,26 @@ class MainActivity : ComponentActivity() {
                             onDismiss = {
                                 scope.launch { simulatorSheetState.hide() }.invokeOnCompletion {
                                     showSimulatorSheet = false
+                                }
+                            }
+                        )
+                    }
+                }
+
+                // Android Auto Diagnostics & Setup Bottom Sheet
+                if (showAutoDiagnosticsSheet) {
+                    val hardwareState by repository.vehicleHardwareState.collectAsState()
+
+                    ModalBottomSheet(
+                        onDismissRequest = { showAutoDiagnosticsSheet = false },
+                        sheetState = autoDiagnosticsSheetState,
+                        containerColor = androidx.compose.ui.graphics.Color.Transparent
+                    ) {
+                        AutoDiagnosticsBottomSheet(
+                            hardwareState = hardwareState,
+                            onDismiss = {
+                                scope.launch { autoDiagnosticsSheetState.hide() }.invokeOnCompletion {
+                                    showAutoDiagnosticsSheet = false
                                 }
                             }
                         )

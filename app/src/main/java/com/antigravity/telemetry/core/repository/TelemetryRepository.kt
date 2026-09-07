@@ -5,7 +5,9 @@ import com.antigravity.telemetry.core.database.FuelEventEntity
 import com.antigravity.telemetry.core.database.VehicleEntity
 import com.antigravity.telemetry.core.model.FuelEvent
 import com.antigravity.telemetry.core.model.FuelType
+import com.antigravity.telemetry.core.model.HardwareStatus
 import com.antigravity.telemetry.core.model.TelemetrySnapshot
+import com.antigravity.telemetry.core.model.VehicleHardwareState
 import com.antigravity.telemetry.core.model.VehicleMeta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,9 @@ class TelemetryRepository(
 
     private val _isSimulationMode = MutableStateFlow(preferences?.getSimulationMode() ?: false)
     val isSimulationMode: StateFlow<Boolean> = _isSimulationMode.asStateFlow()
+
+    private val _vehicleHardwareState = MutableStateFlow(VehicleHardwareState())
+    val vehicleHardwareState: StateFlow<VehicleHardwareState> = _vehicleHardwareState.asStateFlow()
 
     // Clean actual telemetry state - no guesswork, nulls for unmeasured sensors
     private val _actualTelemetryState = MutableStateFlow(
@@ -156,6 +161,60 @@ class TelemetryRepository(
     fun updateActualTelemetry(snapshot: TelemetrySnapshot) {
         _actualTelemetryState.value = snapshot.copy(isSimulation = false)
     }
+
+    fun updateVehicleHardwareState(transform: (VehicleHardwareState) -> VehicleHardwareState) {
+        _vehicleHardwareState.value = transform(_vehicleHardwareState.value).copy(
+            lastUpdatedTimestamp = System.currentTimeMillis()
+        )
+    }
+
+    fun updateActualOdometer(odometerKm: Double) {
+        if (odometerKm <= 0.0) return
+        _actualTelemetryState.value = _actualTelemetryState.value.copy(odometerKm = odometerKm)
+        _vehicleHardwareState.value = _vehicleHardwareState.value.copy(
+            odometerKm = odometerKm,
+            mileageStatus = HardwareStatus.SUCCESS,
+            lastUpdatedTimestamp = System.currentTimeMillis()
+        )
+        CoroutineScope(Dispatchers.IO).launch {
+            database.vehicleDao().updateOdometer("default-vehicle-victoris", odometerKm)
+        }
+    }
+
+    fun updateActualSpeed(speedKmh: Double) {
+        _actualTelemetryState.value = _actualTelemetryState.value.copy(speedKmh = speedKmh)
+        _vehicleHardwareState.value = _vehicleHardwareState.value.copy(
+            speedKmh = speedKmh,
+            speedStatus = HardwareStatus.SUCCESS,
+            lastUpdatedTimestamp = System.currentTimeMillis()
+        )
+    }
+
+    fun updateActualFuel(fuelPercent: Double, isLowFuel: Boolean? = null) {
+        _actualTelemetryState.value = _actualTelemetryState.value.copy(
+            petrolPercent = fuelPercent,
+            isLowFuelWarning = isLowFuel ?: _actualTelemetryState.value.isLowFuelWarning
+        )
+        _vehicleHardwareState.value = _vehicleHardwareState.value.copy(
+            fuelPercent = fuelPercent,
+            isLowFuel = isLowFuel ?: _vehicleHardwareState.value.isLowFuel,
+            energyStatus = HardwareStatus.SUCCESS,
+            lastUpdatedTimestamp = System.currentTimeMillis()
+        )
+    }
+
+    fun updateActualConnection(isConnected: Boolean) {
+        _actualTelemetryState.value = _actualTelemetryState.value.copy(
+            isConnectedToAuto = isConnected,
+            isAutoModeActive = isConnected
+        )
+        _vehicleHardwareState.value = _vehicleHardwareState.value.copy(
+            isConnected = isConnected,
+            lastUpdatedTimestamp = System.currentTimeMillis()
+        )
+    }
+
+    fun getLatestActualOdometer(): Double = _actualTelemetryState.value.odometerKm
 
     fun updateSimulatedTelemetry(snapshot: TelemetrySnapshot) {
         _simulatedTelemetryState.value = snapshot.copy(isSimulation = true)

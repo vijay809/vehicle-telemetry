@@ -47,6 +47,12 @@ import com.antigravity.telemetry.core.designsystem.SlateTextMain
 import com.antigravity.telemetry.core.designsystem.SlateTextMuted
 import com.antigravity.telemetry.core.designsystem.SurfaceSubtle
 import com.antigravity.telemetry.core.designsystem.SurfaceWhite
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material.icons.filled.DirectionsCar
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import com.antigravity.telemetry.core.designsystem.AlertAccent
 import com.antigravity.telemetry.core.designsystem.AlertPastelBg
 import com.antigravity.telemetry.core.designsystem.AlertPastelBorder
@@ -60,6 +66,7 @@ fun SimulatorBottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var isDriving by remember { mutableStateOf(telemetryManager.isSimulating()) }
 
     Box(
@@ -211,7 +218,31 @@ fun SimulatorBottomSheet(
                 }
             }
 
-            // Control 4: Clean Slate / Reset Actual Data
+            // Control 4: Open Android Auto Settings
+            OutlinedButton(
+                onClick = { launchAndroidAutoSettings(context) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = CircleShape,
+                border = androidx.compose.foundation.BorderStroke(1.dp, SlateSoft)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DirectionsCar,
+                    contentDescription = null,
+                    tint = SlateTextMain,
+                    modifier = Modifier.size(18.dp)
+                )
+                androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Open Android Auto Settings",
+                    fontWeight = FontWeight.Bold,
+                    color = SlateTextMain,
+                    fontSize = 13.sp
+                )
+            }
+
+            // Control 5: Clean Slate / Reset Actual Data
             OutlinedButton(
                 onClick = {
                     onResetActualData()
@@ -235,4 +266,33 @@ fun SimulatorBottomSheet(
             }
         }
     }
+}
+
+private fun launchAndroidAutoSettings(context: Context) {
+    val candidateIntents = listOf(
+        Intent("com.google.android.gms.car.SETTINGS"),
+        Intent().apply {
+            setClassName(
+                "com.google.android.projection.gearhead",
+                "com.google.android.projection.gearhead.companion.settings.DefaultSettingsActivity"
+            )
+        },
+        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", "com.google.android.projection.gearhead", null)
+        }
+    )
+
+    for (intent in candidateIntents) {
+        try {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            return
+        } catch (_: Exception) {}
+    }
+
+    try {
+        context.startActivity(Intent(Settings.ACTION_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
+    } catch (_: Exception) {}
 }
