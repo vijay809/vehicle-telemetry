@@ -45,11 +45,18 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 class AntiGravityCarAppService : CarAppService() {
+    override fun onCreate() {
+        super.onCreate()
+        AutoTelemetryLogger.log("SERVICE", "AntiGravityCarAppService onCreate() called.")
+    }
+
     override fun createHostValidator(): HostValidator {
+        AutoTelemetryLogger.log("SERVICE", "createHostValidator() called.")
         return HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
     }
 
     override fun onCreateSession(): Session {
+        AutoTelemetryLogger.log("SERVICE", "onCreateSession() called. Creating AntiGravityCarSession.")
         return AntiGravityCarSession()
     }
 }
@@ -291,7 +298,7 @@ class TelemetryCarScreen(carContext: CarContext) : Screen(carContext), DefaultLi
         setupCarHardware()
     }
 
-    override fun onPause(owner: LifecycleOwner) {
+    override fun onDestroy(owner: LifecycleOwner) {
         teardownCarHardware()
     }
 
