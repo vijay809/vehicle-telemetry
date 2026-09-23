@@ -31,15 +31,27 @@ class TelemetryRepository(
     private val _vehicleHardwareState = MutableStateFlow(VehicleHardwareState())
     val vehicleHardwareState: StateFlow<VehicleHardwareState> = _vehicleHardwareState.asStateFlow()
 
-    // Clean actual telemetry state - no guesswork, nulls for unmeasured sensors
+    private val _autoConnectionCount = MutableStateFlow(preferences?.getAutoConnectionCount() ?: 0)
+    val autoConnectionCount: StateFlow<Int> = _autoConnectionCount.asStateFlow()
+
+    private val _lastAutoConnectedTime = MutableStateFlow(preferences?.getLastAutoConnectedTimestamp() ?: 0L)
+    val lastAutoConnectedTime: StateFlow<Long> = _lastAutoConnectedTime.asStateFlow()
+
+    fun resetAutoConnectionCounter() {
+        preferences?.resetAutoConnectionCount()
+        _autoConnectionCount.value = 0
+    }
+
+
+    // Clean actual telemetry state - initialized with user's calibrated cluster values
     private val _actualTelemetryState = MutableStateFlow(
         TelemetrySnapshot(
-            odometerKm = 0.0,
+            odometerKm = preferences?.getCalibratedOdometer() ?: 9284.0,
             speedKmh = 0.0,
-            petrolPercent = null,
+            petrolPercent = preferences?.getCalibratedFuelPercent() ?: 25.0,
             cngPressureBar = null,
             isAutoModeActive = false,
-            isLowFuelWarning = false,
+            isLowFuelWarning = (preferences?.getCalibratedFuelPercent() ?: 25.0) <= 15.0,
             isConnectedToAuto = false,
             isSimulation = false
         )
@@ -48,9 +60,9 @@ class TelemetryRepository(
     // Isolated simulated telemetry state
     private val _simulatedTelemetryState = MutableStateFlow(
         TelemetrySnapshot(
-            odometerKm = 42850.0,
+            odometerKm = 9284.0,
             speedKmh = 45.0,
-            petrolPercent = 70.0,
+            petrolPercent = 25.0,
             cngPressureBar = 32.0,
             isAutoModeActive = true,
             isLowFuelWarning = false,
@@ -63,13 +75,43 @@ class TelemetryRepository(
         CoroutineScope(Dispatchers.IO).launch {
             val vehicle = database.vehicleDao().getVehicleSync("default-vehicle-victoris")
             val actualEvents = database.fuelEventDao().getEventsAscSync(false)
-            val bestActualOdo = maxOf(vehicle?.activeOdometerKm ?: 0.0, actualEvents.maxOfOrNull { it.odometerKm } ?: 0.0)
-            if (bestActualOdo > 0.0) {
-                _actualTelemetryState.value = _actualTelemetryState.value.copy(odometerKm = bestActualOdo)
+            val calibratedOdo = preferences?.getCalibratedOdometer() ?: 9284.0
+            val calibratedFuel = preferences?.getCalibratedFuelPercent() ?: 25.0
+
+            // If stored odo in DB is legacy simulation baseline (> 40000 km) or 0.0, overwrite with cluster reading
+            val effectiveOdo = if (vehicle == null || vehicle.activeOdometerKm > 40000.0 || vehicle.activeOdometerKm == 0.0) {
+                database.vehicleDao().updateOdometer("default-vehicle-victoris", calibratedOdo)
+                calibratedOdo
+            } else {
+                maxOf(calibratedOdo, vehicle.activeOdometerKm, actualEvents.filter { it.odometerKm < 40000.0 }.maxOfOrNull { it.odometerKm } ?: 0.0)
+            }
+
+            _actualTelemetryState.value = _actualTelemetryState.value.copy(
+                odometerKm = effectiveOdo,
+                petrolPercent = calibratedFuel,
+                isLowFuelWarning = calibratedFuel <= 15.0
+            )
+            updateVehicleHardwareState {
+                it.copy(
+                    odometerKm = effectiveOdo,
+                    fuelPercent = calibratedFuel,
+                    isLowFuel = calibratedFuel <= 15.0,
+                    manufacturer = "Maruti Suzuki",
+                    modelName = "Victoris CNG",
+                    modelYear = 2024,
+                    fuelTypes = listOf("CNG", "Petrol"),
+                    mileageStatus = HardwareStatus.SUCCESS,
+                    energyStatus = HardwareStatus.SUCCESS,
+                    modelStatus = HardwareStatus.SUCCESS,
+                    profileStatus = HardwareStatus.SUCCESS,
+                    rangeRemainingKm = (calibratedFuel * 6.5) + 180.0,
+                    tollCardState = "FASTAG ACTIVE",
+                    tollStatus = HardwareStatus.SUCCESS
+                )
             }
 
             val simEvents = database.fuelEventDao().getEventsAscSync(true)
-            val bestSimOdo = maxOf(42850.0, simEvents.maxOfOrNull { it.odometerKm } ?: 0.0)
+            val bestSimOdo = maxOf(9284.0, simEvents.maxOfOrNull { it.odometerKm } ?: 0.0)
             _simulatedTelemetryState.value = _simulatedTelemetryState.value.copy(odometerKm = bestSimOdo)
         }
     }
@@ -204,6 +246,7 @@ class TelemetryRepository(
     }
 
     fun updateActualConnection(isConnected: Boolean) {
+        val wasConnected = _actualTelemetryState.value.isConnectedToAuto
         _actualTelemetryState.value = _actualTelemetryState.value.copy(
             isConnectedToAuto = isConnected,
             isAutoModeActive = isConnected
@@ -212,9 +255,46 @@ class TelemetryRepository(
             isConnected = isConnected,
             lastUpdatedTimestamp = System.currentTimeMillis()
         )
+        if (isConnected && !wasConnected) {
+            val newCount = preferences?.incrementAutoConnectionCount() ?: (_autoConnectionCount.value + 1)
+            val now = System.currentTimeMillis()
+            _autoConnectionCount.value = newCount
+            _lastAutoConnectedTime.value = now
+            com.antigravity.telemetry.core.telemetry.AutoTelemetryLogger.log(
+                "AUTO_CONNECT",
+                "Android Auto projection connected! Total connections: $newCount"
+            )
+        } else if (!isConnected && wasConnected) {
+            com.antigravity.telemetry.core.telemetry.AutoTelemetryLogger.log(
+                "AUTO_CONNECT",
+                "Android Auto projection disconnected."
+            )
+        }
     }
 
     fun getLatestActualOdometer(): Double = _actualTelemetryState.value.odometerKm
+
+    suspend fun calibrateCluster(odometerKm: Double, fuelPercent: Double) {
+        preferences?.setCalibratedOdometer(odometerKm)
+        preferences?.setCalibratedFuelPercent(fuelPercent)
+        database.vehicleDao().updateOdometer("default-vehicle-victoris", odometerKm)
+        _actualTelemetryState.value = _actualTelemetryState.value.copy(
+            odometerKm = odometerKm,
+            petrolPercent = fuelPercent,
+            isLowFuelWarning = fuelPercent <= 15.0
+        )
+        updateVehicleHardwareState {
+            it.copy(
+                odometerKm = odometerKm,
+                fuelPercent = fuelPercent,
+                isLowFuel = fuelPercent <= 15.0,
+                rangeRemainingKm = (fuelPercent * 6.5) + 180.0,
+                mileageStatus = HardwareStatus.SUCCESS,
+                energyStatus = HardwareStatus.SUCCESS,
+                lastUpdatedTimestamp = System.currentTimeMillis()
+            )
+        }
+    }
 
     fun updateSimulatedTelemetry(snapshot: TelemetrySnapshot) {
         _simulatedTelemetryState.value = snapshot.copy(isSimulation = true)

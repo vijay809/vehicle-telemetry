@@ -79,8 +79,8 @@ class TelemetryManager(
         isSimulating = true
         repository.setSimulationMode(true)
         simulationJob = scope.launch {
-            val lastSimEvent = repository.getEventsAsc(true).lastOrNull()?.odometerKm ?: 42850.0
-            var odo = maxOf(lastSimEvent, 42850.0)
+            val lastSimEvent = repository.getEventsAsc(true).lastOrNull()?.odometerKm ?: 9284.0
+            var odo = maxOf(lastSimEvent, 9284.0)
             var speed = 45.0
             var pressure = 32.0
 
@@ -92,7 +92,7 @@ class TelemetryManager(
                     TelemetrySnapshot(
                         odometerKm = String.format(java.util.Locale.US, "%.2f", odo).toDouble(),
                         speedKmh = speed,
-                        petrolPercent = 70.0,
+                        petrolPercent = 25.0,
                         cngPressureBar = String.format(java.util.Locale.US, "%.1f", pressure).toDouble(),
                         isAutoModeActive = true,
                         isLowFuelWarning = pressure < 2.0,

@@ -1,19 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Android for Cars Telemetry Permissions -->
-    <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
-    <uses-permission android:name="androidx.car.app.CAR_INFO" />
-    <uses-permission android:name="com.google.android.gms.permission.CAR_MILEAGE" />
-    <uses-permission android:name="com.google.android.gms.permission.CAR_FUEL" />
-    <uses-permission android:name="com.google.android.gms.permission.CAR_SPEED" />
-    <uses-permission android:name="android.car.permission.CAR_MILEAGE" />
-    <uses-permission android:name="android.car.permission.CAR_ENERGY" />
-    <uses-permission android:name="android.car.permission.CAR_SPEED" />
-
+    <!-- Phone Location & Telemetry Tracking Permissions -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="androidx.car.app.CAR_HARDWARE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <application
         android:name=".AntiGravityApp"
@@ -24,7 +16,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AntiGravity">
 
-        <!-- FileProvider for Exporting and Emailing Telemetry Logs -->
+        <!-- FileProvider for Exporting and Sharing Telemetry Logs -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -35,17 +27,7 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Android Auto App Descriptor -->
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
-
-        <!-- Minimum Car API Level: 3 required for CarHardwareManager & telemetry -->
-        <meta-data
-            android:name="androidx.car.app.minCarApiLevel"
-            android:value="3" />
-
-        <!-- Mobile Phone Activity -->
+        <!-- Mobile Phone Activity with Android Auto Connection Tracking -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -57,21 +39,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Android Auto Companion In-Car Service -->
-        <service
-            android:name=".car.AntiGravityCarAppService"
-            android:exported="true"
-            android:icon="@mipmap/ic_launcher"
-            android:label="@string/car_app_name">
-            <intent-filter>
-                <action android:name="androidx.car.app.CarAppService" />
-                <category android:name="androidx.car.app.category.POI" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="androidx.car.app.CarAppService" />
-                <category android:name="androidx.car.app.category.IOT" />
-            </intent-filter>
-        </service>
     </application>
 
 </manifest>

@@ -200,7 +200,7 @@ class MainActivity : ComponentActivity() {
                                 scope.launch {
                                     val currentOdo = repository.telemetryState.firstOrNull()?.odometerKm?.takeIf { it > 0.0 }
                                         ?: repository.getLastRefillEvent(com.antigravity.telemetry.core.model.FuelType.CNG)?.odometerKm
-                                        ?: 42850.0
+                                        ?: 9284.0
                                     repository.updateOdometer(currentOdo + delta)
                                 }
                             },
@@ -221,6 +221,8 @@ class MainActivity : ComponentActivity() {
                 // Android Auto Diagnostics & Setup Bottom Sheet
                 if (showAutoDiagnosticsSheet) {
                     val hardwareState by repository.vehicleHardwareState.collectAsState()
+                    val autoConnectionCount by repository.autoConnectionCount.collectAsState()
+                    val lastAutoConnectedTime by repository.lastAutoConnectedTime.collectAsState()
 
                     ModalBottomSheet(
                         onDismissRequest = { showAutoDiagnosticsSheet = false },
@@ -229,9 +231,17 @@ class MainActivity : ComponentActivity() {
                     ) {
                         AutoDiagnosticsBottomSheet(
                             hardwareState = hardwareState,
+                            autoConnectionCount = autoConnectionCount,
+                            lastAutoConnectedTime = lastAutoConnectedTime,
+                            onResetConnectionCount = { repository.resetAutoConnectionCounter() },
                             onDismiss = {
                                 scope.launch { autoDiagnosticsSheetState.hide() }.invokeOnCompletion {
                                     showAutoDiagnosticsSheet = false
+                                }
+                            },
+                            onCalibrateCluster = { odo, fuel ->
+                                scope.launch {
+                                    repository.calibrateCluster(odo, fuel)
                                 }
                             }
                         )

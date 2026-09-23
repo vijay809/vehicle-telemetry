@@ -54,7 +54,7 @@ abstract class AppDatabase : RoomDatabase() {
                 cngTankCapacityKg = 10.0,
                 petrolTankCapacityL = 45.0,
                 estimatedWarmupDistanceKmPerColdStart = 1.2,
-                activeOdometerKm = 0.0
+                activeOdometerKm = 9284.0
             )
             database.vehicleDao().upsertVehicle(vehicle)
         }
@@ -68,7 +68,7 @@ abstract class AppDatabase : RoomDatabase() {
                 cngTankCapacityKg = 10.0,
                 petrolTankCapacityL = 45.0,
                 estimatedWarmupDistanceKmPerColdStart = 1.2,
-                activeOdometerKm = 0.0
+                activeOdometerKm = 9284.0
             )
             database.vehicleDao().upsertVehicle(vehicle)
         }

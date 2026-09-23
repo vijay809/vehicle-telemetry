@@ -29,12 +29,17 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,7 +77,11 @@ import java.util.Locale
 @Composable
 fun AutoDiagnosticsBottomSheet(
     hardwareState: VehicleHardwareState,
+    autoConnectionCount: Int = 0,
+    lastAutoConnectedTime: Long = 0L,
+    onResetConnectionCount: () -> Unit = {},
     onDismiss: () -> Unit,
+    onCalibrateCluster: (Double, Double) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -81,6 +90,86 @@ fun AutoDiagnosticsBottomSheet(
 
     var logSizeText by remember { mutableStateOf(AutoTelemetryLogger.getLogSizeFormatted(context)) }
     var recentLogs by remember { mutableStateOf(AutoTelemetryLogger.getRecentLogs()) }
+
+    var showCalibrationDialog by remember { mutableStateOf(false) }
+    var odoInput by remember { mutableStateOf((hardwareState.odometerKm ?: 9284.0).toInt().toString()) }
+    var fuelInput by remember { mutableStateOf((hardwareState.fuelPercent ?: 25.0).toInt().toString()) }
+
+    if (showCalibrationDialog) {
+        AlertDialog(
+            onDismissRequest = { showCalibrationDialog = false },
+            title = {
+                Text(
+                    text = "Calibrate Instrument Cluster",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    color = SlateTextMain
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Align the app telemetry baseline with your car's physical instrument cluster.",
+                        fontSize = 12.5.sp,
+                        color = SlateTextMuted
+                    )
+
+                    OutlinedTextField(
+                        value = odoInput,
+                        onValueChange = { odoInput = it },
+                        label = { Text("Odometer (km)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = fuelInput,
+                        onValueChange = { fuelInput = it },
+                        label = { Text("Fuel Level (%)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                odoInput = "9284"
+                                fuelInput = "25"
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedSm
+                        ) {
+                            Text("Preset: 9,284 km & 25%", fontSize = 11.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val odo = odoInput.toDoubleOrNull() ?: 9284.0
+                        val fuel = fuelInput.toDoubleOrNull() ?: 25.0
+                        onCalibrateCluster(odo, fuel)
+                        showCalibrationDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CngAccent),
+                    shape = RoundedSm
+                ) {
+                    Text("Apply & Sync", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCalibrationDialog = false }) {
+                    Text("Cancel", color = SlateTextMuted)
+                }
+            }
+        )
+    }
 
     Box(
         modifier = modifier
@@ -161,7 +250,121 @@ fun AutoDiagnosticsBottomSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Connection & Settings Action Row
+            // ANDROID AUTO CONNECTION TRACKER & COUNTER CARD
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(Rounded2xl)
+                    .background(if (isConnected) CngPastelBg else Color(0xFFF8FAFC))
+                    .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, Rounded2xl)
+                    .padding(14.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isConnected) Icons.Default.CheckCircle else Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = if (isConnected) CngAccent else Color(0xFF94A3B8),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Column {
+                                Text(
+                                    text = if (isConnected) "ANDROID AUTO: CONNECTED" else "ANDROID AUTO: DISCONNECTED",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isConnected) CngAccent else SlateTextMuted
+                                )
+                                Text(
+                                    text = if (isConnected) "Phone actively projected to car" else "Waiting for car USB / wireless link",
+                                    fontSize = 10.5.sp,
+                                    color = SlateTextMuted
+                                )
+                            }
+                        }
+
+                        if (autoConnectionCount > 0) {
+                            TextButton(
+                                onClick = onResetConnectionCount,
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("Reset Count", fontSize = 11.sp, color = SlateTextMuted)
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedSm)
+                                .background(SurfaceWhite)
+                                .border(1.dp, SlateSoft, RoundedSm)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Column {
+                                Text(
+                                    text = "TOTAL CONNECTIONS",
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SlateTextFaint,
+                                    letterSpacing = 0.5.sp
+                                )
+                                Text(
+                                    text = "$autoConnectionCount times",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CngAccent
+                                )
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .clip(RoundedSm)
+                                .background(SurfaceWhite)
+                                .border(1.dp, SlateSoft, RoundedSm)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                        ) {
+                            Column {
+                                Text(
+                                    text = "LAST CONNECTED",
+                                    fontSize = 9.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SlateTextFaint,
+                                    letterSpacing = 0.5.sp
+                                )
+                                val lastTimeFormatted = if (lastAutoConnectedTime > 0L) {
+                                    java.text.SimpleDateFormat("dd MMM, hh:mm a", Locale.US).format(java.util.Date(lastAutoConnectedTime))
+                                } else {
+                                    "No connection recorded"
+                                }
+                                Text(
+                                    text = lastTimeFormatted,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = SlateTextMain
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Action Row: Auto Settings & Calibrate Cluster
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -187,33 +390,25 @@ fun AutoDiagnosticsBottomSheet(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp)
-                        .clip(RoundedSm)
-                        .background(if (isConnected) CngPastelBg else Color(0xFFF1F5F9))
-                        .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, RoundedSm)
-                        .padding(horizontal = 10.dp),
-                    contentAlignment = Alignment.Center
+                Button(
+                    onClick = { showCalibrationDialog = true },
+                    modifier = Modifier.weight(1.3f).height(40.dp),
+                    shape = RoundedSm,
+                    colors = ButtonDefaults.buttonColors(containerColor = CngAccent)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isConnected) Icons.Default.CheckCircle else Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = if (isConnected) CngAccent else Color(0xFFD97706),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = if (isConnected) "Host: PROJECTION" else "No Car Host",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isConnected) CngAccent else SlateTextMain
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.DirectionsCar,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Calibrate Cluster",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
             }
 

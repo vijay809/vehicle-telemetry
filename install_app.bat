@@ -67,17 +67,27 @@ if not exist "gradle\wrapper\gradle-wrapper.jar" (
 )
 
 :: 5. Build and Install via Gradle
-echo [*] Building and installing AntiGravity debug APK...
+echo [*] Building AntiGravity debug APK...
 if exist "gradle\wrapper\gradle-wrapper.jar" (
-    call gradlew.bat installDebug
+    call gradlew.bat assembleDebug
 ) else (
     echo [*] Attempting direct gradle build...
-    call gradle installDebug
+    call gradle assembleDebug
 )
 
 if %errorlevel% neq 0 (
     echo.
-    echo [!] Build or installation failed. Check the error log above.
+    echo [!] Build failed. Check the error log above.
+    pause
+    exit /b %errorlevel%
+)
+
+echo [*] Installing APK with Google Play Store originator flag for Android Auto...
+adb install -i com.android.vending -r -d app\build\outputs\apk\debug\app-debug.apk
+
+if %errorlevel% neq 0 (
+    echo.
+    echo [!] Installation failed.
     echo     Tip: Ensure your device has USB Debugging enabled and 'Install via USB' permitted.
     pause
     exit /b %errorlevel%
