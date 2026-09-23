@@ -66,7 +66,7 @@ fun SereneAppHeader(
             .fillMaxWidth()
             .background(CanvasLavender)
             .statusBarsPadding()
-            .padding(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 8.dp),
+            .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
