@@ -22,5 +22,13 @@ class Converters {
     fun fromEventType(value: EventType): String = value.name
 
     @TypeConverter
-    fun toEventType(value: String): EventType = enumValueOf(value)
+    fun toEventType(value: String): EventType = try {
+        enumValueOf<EventType>(value)
+    } catch (e: Exception) {
+        when (value) {
+            "REFILL" -> EventType.CNG_FILL
+            "FUEL_LOW" -> EventType.PETROL_RESERVE
+            else -> EventType.ODOMETER_UPDATE
+        }
+    }
 }

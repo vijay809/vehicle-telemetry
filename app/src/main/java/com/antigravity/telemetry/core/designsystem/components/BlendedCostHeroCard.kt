@@ -3,6 +3,7 @@ package com.antigravity.telemetry.core.designsystem.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +55,7 @@ fun BlendedCostHeroCard(
     cngCostPerKm: Double,
     petrolCostPerKm: Double,
     odometerKm: Double = 0.0,
+    onOdometerClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val animatedCngRatio by animateFloatAsState(targetValue = (cngRatioPercent / 100f).toFloat(), label = "cngRatio")
@@ -116,6 +118,9 @@ fun BlendedCostHeroCard(
                         .clip(CircleShape)
                         .background(SurfaceSubtle)
                         .border(1.dp, SlateSoft.copy(alpha = 0.8f), CircleShape)
+                        .then(
+                            if (onOdometerClick != null) Modifier.clickable { onOdometerClick() } else Modifier
+                        )
                         .padding(horizontal = 9.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)

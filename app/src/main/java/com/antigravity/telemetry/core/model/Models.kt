@@ -28,7 +28,28 @@ data class FuelEvent(
     val confirmedByUser: Boolean = true,
     val stationName: String? = null,
     val isSimulation: Boolean = false
-)
+) {
+    val isCngRefill: Boolean
+        get() = type == EventType.CNG_FILL || (type == EventType.REFILL && fuelType == FuelType.CNG)
+
+    val isPetrolRefill: Boolean
+        get() = type == EventType.PETROL_FILL || (type == EventType.REFILL && fuelType == FuelType.PETROL)
+
+    val isRefill: Boolean
+        get() = type == EventType.CNG_FILL || type == EventType.PETROL_FILL || type == EventType.REFILL
+
+    val isCngEmpty: Boolean
+        get() = type == EventType.CNG_EMPTY
+
+    val isPetrolReserve: Boolean
+        get() = type == EventType.PETROL_RESERVE || type == EventType.FUEL_LOW
+
+    val isOdometerUpdate: Boolean
+        get() = type == EventType.ODOMETER_UPDATE
+
+    val isManualFuelSwitch: Boolean
+        get() = type == EventType.MANUAL_FUEL_SWITCH
+}
 
 data class DriveSegment(
     val id: String = UUID.randomUUID().toString(),

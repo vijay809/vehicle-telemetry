@@ -19,7 +19,8 @@ enum class LedgerFilter {
     ALL,
     CNG,
     PETROL,
-    SWITCHOVER
+    ODOMETER,
+    SWITCH
 }
 
 data class FuelLedgerUiState(
@@ -28,6 +29,7 @@ data class FuelLedgerUiState(
     val filteredEvents: List<FuelEvent> = emptyList(),
     val cngCount: Int = 0,
     val petrolCount: Int = 0,
+    val odometerCount: Int = 0,
     val switchCount: Int = 0,
     val cngRatioPercent: Double = 0.0,
     val petrolRatioPercent: Double = 0.0,
@@ -45,16 +47,23 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
         _selectedFilter,
         repository.eventsFlow,
         repository.telemetryState
-    ) { filter, events, telemetry ->
-        val cngs = events.filter { it.type == EventType.REFILL && it.fuelType == FuelType.CNG }
-        val pets = events.filter { it.type == EventType.REFILL && it.fuelType == FuelType.PETROL }
-        val switches = events.filter { it.type == EventType.CNG_EMPTY }
+    ) { filter, rawEvents, telemetry ->
+        // Sort strictly by odometerKm DESC, then timestamp DESC
+        val events = rawEvents.sortedWith(
+            compareByDescending<FuelEvent> { it.odometerKm }.thenByDescending { it.timestamp }
+        )
+
+        val cngs = events.filter { it.isCngRefill || it.isCngEmpty }
+        val pets = events.filter { it.isPetrolRefill || it.isPetrolReserve }
+        val odos = events.filter { it.isOdometerUpdate }
+        val switches = events.filter { it.isManualFuelSwitch || it.isCngEmpty }
 
         val filtered = when (filter) {
             LedgerFilter.ALL -> events
             LedgerFilter.CNG -> cngs
             LedgerFilter.PETROL -> pets
-            LedgerFilter.SWITCHOVER -> switches
+            LedgerFilter.ODOMETER -> odos
+            LedgerFilter.SWITCH -> switches
         }
 
         val blended = CalculationEngines.calculateBlendedCost(events, telemetry.odometerKm)
@@ -65,6 +74,7 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
             filteredEvents = filtered,
             cngCount = cngs.size,
             petrolCount = pets.size,
+            odometerCount = odos.size,
             switchCount = switches.size,
             cngRatioPercent = if (blended.totalCost > 0) blended.cngSharePercent else 0.0,
             petrolRatioPercent = if (blended.totalCost > 0) blended.petrolSharePercent else 0.0,
@@ -86,6 +96,18 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
     fun deleteEvent(id: String) {
         viewModelScope.launch {
             repository.deleteEvent(id)
+        }
+    }
+
+    fun logOdometerUpdate(odometerKm: Double) {
+        viewModelScope.launch {
+            repository.logOdometerUpdate(odometerKm)
+        }
+    }
+
+    fun logManualFuelSwitch(targetFuel: FuelType, odometerKm: Double) {
+        viewModelScope.launch {
+            repository.logManualFuelSwitch(targetFuel, odometerKm)
         }
     }
 }

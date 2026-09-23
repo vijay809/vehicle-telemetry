@@ -12,7 +12,23 @@ enum class EventSource {
 }
 
 enum class EventType {
-    REFILL,
+    CNG_FILL,
     CNG_EMPTY,
-    FUEL_LOW
+    PETROL_FILL,
+    PETROL_RESERVE,
+    ODOMETER_UPDATE,
+    MANUAL_FUEL_SWITCH,
+
+    // Legacy types retained for database backward-compatibility
+    REFILL,
+    FUEL_LOW;
+
+    val isCng: Boolean
+        get() = this == CNG_FILL || this == CNG_EMPTY
+
+    val isPetrol: Boolean
+        get() = this == PETROL_FILL || this == PETROL_RESERVE || this == FUEL_LOW
+
+    val isFill: Boolean
+        get() = this == CNG_FILL || this == PETROL_FILL || this == REFILL
 }

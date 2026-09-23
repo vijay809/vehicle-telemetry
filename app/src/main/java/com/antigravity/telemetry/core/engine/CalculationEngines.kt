@@ -58,7 +58,7 @@ object CalculationEngines {
      * Blended Cost (₹/km) = sum(totalCost) / (Odo_latest - Odo_base)
      */
     fun calculateBlendedCost(events: List<FuelEvent>, currentOdometer: Double): BlendedCostResult {
-        val refills = events.filter { it.type == EventType.REFILL && (it.totalCost ?: 0.0) > 0 }
+        val refills = events.filter { it.isRefill && (it.totalCost ?: 0.0) > 0 }
         if (refills.isEmpty()) {
             return BlendedCostResult(
                 blendedCostPerKm = 0.0,
@@ -83,9 +83,9 @@ object CalculationEngines {
 
         for (refill in refills) {
             val cost = refill.totalCost ?: 0.0
-            if (refill.fuelType == FuelType.CNG) {
+            if (refill.isCngRefill) {
                 cngSpend += cost
-            } else if (refill.fuelType == FuelType.PETROL) {
+            } else if (refill.isPetrolRefill) {
                 petrolSpend += cost
             }
         }
@@ -139,7 +139,7 @@ object CalculationEngines {
 
         // Track CNG sessions
         val cngEvents = sortedEvents.filter {
-            (it.type == EventType.REFILL && it.fuelType == FuelType.CNG) || it.type == EventType.CNG_EMPTY
+            it.isCngRefill || it.isCngEmpty
         }
 
         var sessionStartOdo: Double? = null
@@ -147,7 +147,7 @@ object CalculationEngines {
         var sessionColdStarts = 0
 
         for (event in cngEvents) {
-            if (event.type == EventType.REFILL && event.fuelType == FuelType.CNG) {
+            if (event.isCngRefill) {
                 val qty = event.quantity ?: 0.0
                 if (qty > 0) {
                     // Check if previous session was never explicitly marked empty,
@@ -266,15 +266,14 @@ object CalculationEngines {
         var lastColdStartsCount = 0
 
         val petrolEvents = sortedEvents.filter {
-            (it.type == EventType.REFILL && it.fuelType == FuelType.PETROL) ||
-            (it.type == EventType.FUEL_LOW && it.fuelType == FuelType.PETROL)
+            it.isPetrolRefill || it.isPetrolReserve
         }
 
         var sessionStartOdo: Double? = null
         var sessionAccumulatedQty = 0.0
 
         for (event in petrolEvents) {
-            if (event.type == EventType.REFILL && event.fuelType == FuelType.PETROL) {
+            if (event.isPetrolRefill) {
                 val qty = event.quantity ?: 0.0
                 if (qty > 0) {
                     // Rule 3: Keep session going across top-ups without reaching low fuel
@@ -283,7 +282,7 @@ object CalculationEngines {
                     }
                     sessionAccumulatedQty += qty
                 }
-            } else if (event.type == EventType.FUEL_LOW && event.fuelType == FuelType.PETROL) {
+            } else if (event.isPetrolReserve) {
                 // Rule 2: Trigger calculation on Low Fuel
                 if (sessionStartOdo != null && sessionAccumulatedQty > 0) {
                     val lowFuelOdo = event.odometerKm
@@ -369,7 +368,7 @@ object CalculationEngines {
         if (endOdo <= startOdo) return CngIntervalAnalysis(0.0, 0.0, 0.0, 0)
 
         val cngEvents = events.filter {
-            (it.type == EventType.REFILL && it.fuelType == FuelType.CNG) || it.type == EventType.CNG_EMPTY
+            it.isCngRefill || it.isCngEmpty
         }.sortedWith(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
 
         var totalRawCngDistance = 0.0
@@ -381,12 +380,12 @@ object CalculationEngines {
         var activeColdStarts = 0
 
         for (event in cngEvents) {
-            if (event.type == EventType.REFILL && event.fuelType == FuelType.CNG) {
+            if (event.isCngRefill) {
                 if (activeCngStart == null) {
                     activeCngStart = event.odometerKm
                 }
                 activeColdStarts += event.coldStartsSinceLastRefill
-            } else if (event.type == EventType.CNG_EMPTY) {
+            } else if (event.isCngEmpty) {
                 if (activeCngStart != null) {
                     val cngStart = activeCngStart
                     val cngEnd = event.odometerKm

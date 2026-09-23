@@ -33,3 +33,10 @@ val AlertAccent = Color(0xFFE11D48)
 // Primary & Secondary Brand Tokens
 val BrandPrimary = Color(0xFF006C49)
 val BrandPrimaryContainer = Color(0xFF10B981)
+
+// Semantic Manual Fuel Switch (Lavender Pastel - #DCCCEC)
+val SwitchLavenderBg = Color(0xFFDCCCEC)
+val SwitchLavenderBorder = Color(0xFFC4B5D6)
+val SwitchLavenderBadge = Color(0xFFE9E0F2)
+val SwitchLavenderAccent = Color(0xFF5B4970)
+val SwitchLavenderAccentLight = Color(0xFF86729C)

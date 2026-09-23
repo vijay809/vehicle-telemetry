@@ -67,6 +67,7 @@ import com.antigravity.telemetry.core.designsystem.components.PetrolEfficiencyCa
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onOpenSimulator: () -> Unit = {},
+    onOpenOdometerSheet: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -86,7 +87,8 @@ fun DashboardScreen(
                     petrolRatioPercent = state.blendedCost.petrolSharePercent,
                     cngCostPerKm = state.blendedCost.cngCostPerKm,
                     petrolCostPerKm = state.blendedCost.petrolCostPerKm,
-                    odometerKm = state.telemetry.odometerKm
+                    odometerKm = state.telemetry.odometerKm,
+                    onOdometerClick = onOpenOdometerSheet
                 )
             }
 

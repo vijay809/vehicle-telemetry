@@ -52,6 +52,7 @@ import com.antigravity.telemetry.feature.ledger.FuelLedgerViewModel
 import com.antigravity.telemetry.feature.refill.RefillViewModel
 import com.antigravity.telemetry.feature.refill.RefillWizardSheet
 import com.antigravity.telemetry.feature.simulator.SimulatorBottomSheet
+import com.antigravity.telemetry.core.designsystem.components.OdometerUpdateSheet
 import androidx.car.app.connection.CarConnection
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
@@ -85,11 +86,13 @@ class MainActivity : ComponentActivity() {
 
                 var showRefillSheet by remember { mutableStateOf(false) }
                 var showSimulatorSheet by remember { mutableStateOf(false) }
+                var showOdometerSheet by remember { mutableStateOf(false) }
                 var refillPrompt by remember { mutableStateOf<StationaryRefillPrompt?>(null) }
 
                 // All bottom sheets allow slide/swipe down to close
                 val refillSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 val simulatorSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+                val odometerSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
                 // Listen for heuristic stationary refill prompt
                 LaunchedEffect(Unit) {
@@ -229,7 +232,8 @@ class MainActivity : ComponentActivity() {
                                 val dashboardVm = remember { DashboardViewModel(repository, preferences) }
                                 DashboardScreen(
                                     viewModel = dashboardVm,
-                                    onOpenSimulator = { showSimulatorSheet = true }
+                                    onOpenSimulator = { showSimulatorSheet = true },
+                                    onOpenOdometerSheet = { showOdometerSheet = true }
                                 )
                             }
 
@@ -245,7 +249,8 @@ class MainActivity : ComponentActivity() {
                                 val ledgerVm = remember { FuelLedgerViewModel(repository) }
                                 FuelLedgerScreen(
                                     viewModel = ledgerVm,
-                                    onOpenSimulator = { showSimulatorSheet = true }
+                                    onOpenSimulator = { showSimulatorSheet = true },
+                                    onOpenOdometerSheet = { showOdometerSheet = true }
                                 )
                             }
                         }
@@ -291,9 +296,41 @@ class MainActivity : ComponentActivity() {
                                     repository.resetActualData()
                                 }
                             },
+                            onSeedSampleData = {
+                                scope.launch {
+                                    repository.seedLifecycleSampleData()
+                                }
+                            },
                             onDismiss = {
                                 scope.launch { simulatorSheetState.hide() }.invokeOnCompletion {
                                     showSimulatorSheet = false
+                                }
+                            }
+                        )
+                    }
+                }
+
+                // Odometer Update Bottom Sheet (Reusable)
+                if (showOdometerSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showOdometerSheet = false },
+                        sheetState = odometerSheetState,
+                        containerColor = androidx.compose.ui.graphics.Color.Transparent
+                    ) {
+                        val currentOdo = telemetrySnapshot.odometerKm
+                        OdometerUpdateSheet(
+                            currentOdometerKm = currentOdo,
+                            onConfirmOdometer = { newOdo ->
+                                scope.launch {
+                                    repository.logOdometerUpdate(newOdo)
+                                    odometerSheetState.hide()
+                                }.invokeOnCompletion {
+                                    showOdometerSheet = false
+                                }
+                            },
+                            onDismiss = {
+                                scope.launch { odometerSheetState.hide() }.invokeOnCompletion {
+                                    showOdometerSheet = false
                                 }
                             }
                         )

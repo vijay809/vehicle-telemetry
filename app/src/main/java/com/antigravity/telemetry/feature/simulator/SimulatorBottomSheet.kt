@@ -63,6 +63,7 @@ fun SimulatorBottomSheet(
     telemetryManager: TelemetryManager,
     onAdvanceOdometer: (Double) -> Unit,
     onResetActualData: () -> Unit = {},
+    onSeedSampleData: () -> Unit = {},
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -242,7 +243,30 @@ fun SimulatorBottomSheet(
                 )
             }
 
-            // Control 5: Clean Slate / Reset Actual Data
+            // Control 5: Seed 6 Lifecycle Events
+            OutlinedButton(
+                onClick = {
+                    onSeedSampleData()
+                    onDismiss()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = CngAccent
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, CngAccent)
+            ) {
+                Text(
+                    text = "Seed 6 Lifecycle Events (Demo)",
+                    fontWeight = FontWeight.Bold,
+                    color = CngAccent,
+                    fontSize = 13.sp
+                )
+            }
+
+            // Control 6: Clean Slate / Reset Actual Data
             OutlinedButton(
                 onClick = {
                     onResetActualData()

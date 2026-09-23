@@ -3,6 +3,8 @@ package com.antigravity.telemetry.core.repository
 import com.antigravity.telemetry.core.database.AppDatabase
 import com.antigravity.telemetry.core.database.FuelEventEntity
 import com.antigravity.telemetry.core.database.VehicleEntity
+import com.antigravity.telemetry.core.model.EventSource
+import com.antigravity.telemetry.core.model.EventType
 import com.antigravity.telemetry.core.model.FuelEvent
 import com.antigravity.telemetry.core.model.FuelType
 import com.antigravity.telemetry.core.model.HardwareStatus
@@ -18,6 +20,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import java.util.UUID
 import kotlinx.coroutines.launch
 
 class TelemetryRepository(
@@ -306,6 +309,155 @@ class TelemetryRepository(
 
     suspend fun getLastRefillEvent(fuelType: FuelType, isSimulation: Boolean = _isSimulationMode.value): FuelEvent? {
         return database.fuelEventDao().getLastRefillEvent("default-vehicle-victoris", fuelType, isSimulation)?.toDomain()
+    }
+
+    suspend fun logOdometerUpdate(
+        odometerKm: Double,
+        timestamp: Long = System.currentTimeMillis(),
+        notes: String? = null
+    ) {
+        val event = FuelEvent(
+            id = UUID.randomUUID().toString(),
+            vehicleId = "default-vehicle-victoris",
+            timestamp = timestamp,
+            odometerKm = odometerKm,
+            source = EventSource.MANUAL,
+            type = EventType.ODOMETER_UPDATE,
+            fuelType = null,
+            quantity = null,
+            pricePerUnit = null,
+            totalCost = null,
+            isFullTank = false,
+            fuelLevelPercent = null,
+            coldStartsSinceLastRefill = 0,
+            confirmedByUser = true,
+            stationName = notes ?: "Odometer Calibration",
+            isSimulation = _isSimulationMode.value
+        )
+        addEvent(event)
+        updateOdometer(odometerKm)
+    }
+
+    suspend fun logManualFuelSwitch(
+        targetFuel: FuelType,
+        odometerKm: Double,
+        timestamp: Long = System.currentTimeMillis()
+    ) {
+        val event = FuelEvent(
+            id = UUID.randomUUID().toString(),
+            vehicleId = "default-vehicle-victoris",
+            timestamp = timestamp,
+            odometerKm = odometerKm,
+            source = EventSource.MANUAL,
+            type = EventType.MANUAL_FUEL_SWITCH,
+            fuelType = targetFuel,
+            quantity = null,
+            pricePerUnit = null,
+            totalCost = null,
+            isFullTank = false,
+            fuelLevelPercent = null,
+            coldStartsSinceLastRefill = 0,
+            confirmedByUser = true,
+            stationName = "Switched to ${targetFuel.name}",
+            isSimulation = _isSimulationMode.value
+        )
+        addEvent(event)
+        updateOdometer(odometerKm)
+    }
+
+    suspend fun seedLifecycleSampleData() {
+        val now = System.currentTimeMillis()
+        val oneHour = 3600_000L
+        val oneDay = 86400_000L
+
+        val events = listOf(
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (5 * oneDay),
+                odometerKm = 9000.0,
+                source = EventSource.MANUAL,
+                type = EventType.ODOMETER_UPDATE,
+                stationName = "Pre-trip calibration",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (4 * oneDay),
+                odometerKm = 9100.0,
+                source = EventSource.MANUAL,
+                type = EventType.CNG_FILL,
+                fuelType = FuelType.CNG,
+                quantity = 8.42,
+                pricePerUnit = 88.5,
+                totalCost = 745.0,
+                isFullTank = true,
+                stationName = "Shell Super CNG",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (3 * oneDay),
+                odometerKm = 9150.0,
+                source = EventSource.MANUAL,
+                type = EventType.PETROL_FILL,
+                fuelType = FuelType.PETROL,
+                quantity = 15.0,
+                pricePerUnit = 96.7,
+                totalCost = 1450.0,
+                isFullTank = true,
+                stationName = "HP Petrol Pump",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (2 * oneDay),
+                odometerKm = 9250.0,
+                source = EventSource.MANUAL,
+                type = EventType.MANUAL_FUEL_SWITCH,
+                fuelType = FuelType.CNG,
+                stationName = "Switched to CNG mode",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (1 * oneDay),
+                odometerKm = 9380.0,
+                source = EventSource.MANUAL,
+                type = EventType.CNG_EMPTY,
+                fuelType = FuelType.CNG,
+                coldStartsSinceLastRefill = 4,
+                stationName = "Tank exhausted auto-switch",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (2 * oneHour),
+                odometerKm = 9450.0,
+                source = EventSource.MANUAL,
+                type = EventType.PETROL_RESERVE,
+                fuelType = FuelType.PETROL,
+                fuelLevelPercent = 12.0,
+                stationName = "Reserve threshold active",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            )
+        )
+
+        for (e in events) {
+            database.fuelEventDao().insertEvent(e.toEntity())
+        }
+        updateOdometer(9450.0)
     }
 
     private fun FuelEventEntity.toDomain(): FuelEvent = FuelEvent(
