@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.EvStation
-import androidx.compose.material.icons.filled.SettingsSuggest
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Tune
@@ -69,10 +68,9 @@ import com.antigravity.telemetry.core.designsystem.components.PetrolEfficiencyCa
 fun DashboardScreen(
     viewModel: DashboardViewModel,
     onNavigateToRefill: () -> Unit,
-    onNavigateToCngEmpty: () -> Unit,
     onNavigateToLedger: () -> Unit,
     onOpenSimulator: () -> Unit,
-    onOpenAutoDiagnostics: () -> Unit = {},
+    onNavigateToDashboard: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -106,9 +104,7 @@ fun DashboardScreen(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier
-                        .clip(RoundedSm)
-                        .clickable { onOpenAutoDiagnostics() }
+                    modifier = Modifier.clip(RoundedSm)
                 ) {
                     Box(
                         modifier = Modifier
@@ -165,10 +161,10 @@ fun DashboardScreen(
                             }
                         }
                         Text(
-                            text = if (isConnected) "Synced via Android Auto" else "Tap for telemetry & diagnostics",
+                            text = if (isConnected) "Synced via Android Auto" else "Android Auto Disconnected",
                             fontSize = 11.sp,
-                            color = if (isConnected) SlateTextMuted else CngAccent,
-                            fontWeight = if (isConnected) FontWeight.Normal else FontWeight.Medium
+                            color = SlateTextMuted,
+                            fontWeight = FontWeight.Normal
                         )
                     }
                 }
@@ -229,7 +225,7 @@ fun DashboardScreen(
         },
         bottomBar = {
             FloatingQuickActionDock(
-                onCngEmptyClick = onNavigateToCngEmpty,
+                onDashboardClick = onNavigateToDashboard,
                 onRefillClick = onNavigateToRefill,
                 onHistoryClick = onNavigateToLedger
             )
@@ -242,64 +238,6 @@ fun DashboardScreen(
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-
-            // Top Live Status Capsule
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(2.dp, Rounded2xl, spotColor = Color(0x060F172A))
-                        .clip(Rounded2xl)
-                        .background(SurfaceWhite.copy(alpha = 0.85f))
-                        .border(1.dp, SlateSoft.copy(alpha = 0.6f), Rounded2xl)
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(CngAccent)
-                                .alpha(pulseAlpha)
-                        )
-                        Text(
-                            text = "LIVE ECU TELEMETRY",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.6.sp,
-                            color = SlateTextMuted
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(PetrolPastelBg)
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SettingsSuggest,
-                            contentDescription = null,
-                            tint = PetrolAccent,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "Auto Mode Active",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = PetrolAccent
-                        )
-                    }
-                }
-            }
-
             // Hero Card: Blended Running Cost
             item {
                 BlendedCostHeroCard(

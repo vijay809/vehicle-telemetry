@@ -42,7 +42,6 @@ import com.antigravity.telemetry.feature.refill.RefillViewModel
 import com.antigravity.telemetry.feature.refill.RefillWizardSheet
 import com.antigravity.telemetry.feature.simulator.SimulatorBottomSheet
 import androidx.car.app.connection.CarConnection
-import com.antigravity.telemetry.feature.diagnostics.AutoDiagnosticsBottomSheet
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 
@@ -72,16 +71,12 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
 
                 var showRefillSheet by remember { mutableStateOf(false) }
-                var showCngEmptySheet by remember { mutableStateOf(false) }
                 var showSimulatorSheet by remember { mutableStateOf(false) }
-                var showAutoDiagnosticsSheet by remember { mutableStateOf(false) }
                 var refillPrompt by remember { mutableStateOf<StationaryRefillPrompt?>(null) }
 
                 // All bottom sheets allow slide/swipe down to close
                 val refillSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                val cngEmptySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 val simulatorSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-                val autoDiagnosticsSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
                 // Listen for heuristic stationary refill prompt
                 LaunchedEffect(Unit) {
@@ -127,10 +122,9 @@ class MainActivity : ComponentActivity() {
                                 DashboardScreen(
                                     viewModel = dashboardVm,
                                     onNavigateToRefill = { showRefillSheet = true },
-                                    onNavigateToCngEmpty = { showCngEmptySheet = true },
                                     onNavigateToLedger = { navController.navigate("ledger") },
                                     onOpenSimulator = { showSimulatorSheet = true },
-                                    onOpenAutoDiagnostics = { showAutoDiagnosticsSheet = true }
+                                    onNavigateToDashboard = { /* Feature placeholder - implement later */ }
                                 )
                             }
 
@@ -170,23 +164,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // CNG Empty Alert Bottom Sheet
-                if (showCngEmptySheet) {
-                    ModalBottomSheet(
-                        onDismissRequest = { showCngEmptySheet = false },
-                        sheetState = cngEmptySheetState,
-                        containerColor = androidx.compose.ui.graphics.Color.Transparent
-                    ) {
-                        val cngEmptyVm = remember { CngEmptyViewModel(repository) }
-                        com.antigravity.telemetry.feature.cngempty.CngEmptyTriggerScreen(
-                            viewModel = cngEmptyVm,
-                            onBack = {
-                                showCngEmptySheet = false
-                            }
-                        )
-                    }
-                }
-
                 // ECU Simulator Bottom Sheet
                 if (showSimulatorSheet) {
                     ModalBottomSheet(
@@ -212,36 +189,6 @@ class MainActivity : ComponentActivity() {
                             onDismiss = {
                                 scope.launch { simulatorSheetState.hide() }.invokeOnCompletion {
                                     showSimulatorSheet = false
-                                }
-                            }
-                        )
-                    }
-                }
-
-                // Android Auto Diagnostics & Setup Bottom Sheet
-                if (showAutoDiagnosticsSheet) {
-                    val hardwareState by repository.vehicleHardwareState.collectAsState()
-                    val autoConnectionCount by repository.autoConnectionCount.collectAsState()
-                    val lastAutoConnectedTime by repository.lastAutoConnectedTime.collectAsState()
-
-                    ModalBottomSheet(
-                        onDismissRequest = { showAutoDiagnosticsSheet = false },
-                        sheetState = autoDiagnosticsSheetState,
-                        containerColor = androidx.compose.ui.graphics.Color.Transparent
-                    ) {
-                        AutoDiagnosticsBottomSheet(
-                            hardwareState = hardwareState,
-                            autoConnectionCount = autoConnectionCount,
-                            lastAutoConnectedTime = lastAutoConnectedTime,
-                            onResetConnectionCount = { repository.resetAutoConnectionCounter() },
-                            onDismiss = {
-                                scope.launch { autoDiagnosticsSheetState.hide() }.invokeOnCompletion {
-                                    showAutoDiagnosticsSheet = false
-                                }
-                            },
-                            onCalibrateCluster = { odo, fuel ->
-                                scope.launch {
-                                    repository.calibrateCluster(odo, fuel)
                                 }
                             }
                         )

@@ -192,34 +192,13 @@ fun FuelLedgerScreen(
             // Screen Context Header
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Fuel Ledger & Events",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = SlateTextMain,
-                            letterSpacing = (-0.5).sp
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(CngPastelBg)
-                                .border(1.dp, CngPastelBorder, CircleShape)
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
-                        ) {
-                            Text(
-                                text = "OBD-II Verified",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = CngAccent
-                            )
-                        }
-                    }
+                    Text(
+                        text = "Fuel Ledger & Events",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SlateTextMain,
+                        letterSpacing = (-0.5).sp
+                    )
                     Text(
                         text = "Historical fill-ups, switchovers & calculated efficiencies",
                         fontSize = 13.sp,

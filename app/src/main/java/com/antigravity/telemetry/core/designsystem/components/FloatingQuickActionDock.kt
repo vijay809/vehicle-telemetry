@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.LocalGasStation
-import androidx.compose.material.icons.filled.Propane
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -39,7 +39,7 @@ import com.antigravity.telemetry.core.designsystem.SurfaceWhite
 
 @Composable
 fun FloatingQuickActionDock(
-    onCngEmptyClick: () -> Unit,
+    onDashboardClick: () -> Unit = {},
     onRefillClick: () -> Unit,
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -69,7 +69,7 @@ fun FloatingQuickActionDock(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Ghost action: CNG Empty
+                // Ghost action: Dashboard (Feature placeholder)
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -78,22 +78,22 @@ fun FloatingQuickActionDock(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = onCngEmptyClick
+                            onClick = onDashboardClick
                         ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Propane,
-                        contentDescription = "CNG Empty",
-                        tint = PetrolAccent,
+                        imageVector = Icons.Default.Dashboard,
+                        contentDescription = "Dashboard",
+                        tint = CngAccent,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "CNG Empty",
+                        text = "Dashboard",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = SlateTextMuted
+                        color = CngAccent
                     )
                 }
 
