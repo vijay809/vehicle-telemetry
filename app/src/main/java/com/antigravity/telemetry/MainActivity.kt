@@ -26,11 +26,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.antigravity.telemetry.core.designsystem.AntiGravityTheme
 import com.antigravity.telemetry.core.designsystem.CanvasLavender
 import com.antigravity.telemetry.core.designsystem.CngAccent
 import com.antigravity.telemetry.core.designsystem.SlateTextMuted
+import com.antigravity.telemetry.core.designsystem.components.FloatingQuickActionDock
 import com.antigravity.telemetry.core.telemetry.StationaryRefillPrompt
 import com.antigravity.telemetry.feature.cngempty.CngEmptyTriggerScreen
 import com.antigravity.telemetry.feature.cngempty.CngEmptyViewModel
@@ -69,6 +71,8 @@ class MainActivity : ComponentActivity() {
             AntiGravityTheme {
                 val navController = rememberNavController()
                 val scope = rememberCoroutineScope()
+                val currentBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentRoute = currentBackStackEntry?.destination?.route ?: "dashboard"
 
                 var showRefillSheet by remember { mutableStateOf(false) }
                 var showSimulatorSheet by remember { mutableStateOf(false) }
@@ -113,7 +117,30 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    containerColor = CanvasLavender
+                    containerColor = CanvasLavender,
+                    bottomBar = {
+                        FloatingQuickActionDock(
+                            currentRoute = currentRoute,
+                            onDashboardClick = {
+                                if (currentRoute != "dashboard") {
+                                    navController.navigate("dashboard") {
+                                        popUpTo("dashboard") { inclusive = true }
+                                        launchSingleTop = true
+                                    }
+                                }
+                            },
+                            onRefillClick = {
+                                showRefillSheet = true
+                            },
+                            onHistoryClick = {
+                                if (currentRoute != "ledger") {
+                                    navController.navigate("ledger") {
+                                        launchSingleTop = true
+                                    }
+                                }
+                            }
+                        )
+                    }
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
                         NavHost(navController = navController, startDestination = "dashboard") {
@@ -121,10 +148,7 @@ class MainActivity : ComponentActivity() {
                                 val dashboardVm = remember { DashboardViewModel(repository, preferences) }
                                 DashboardScreen(
                                     viewModel = dashboardVm,
-                                    onNavigateToRefill = { showRefillSheet = true },
-                                    onNavigateToLedger = { navController.navigate("ledger") },
-                                    onOpenSimulator = { showSimulatorSheet = true },
-                                    onNavigateToDashboard = { /* Feature placeholder - implement later */ }
+                                    onOpenSimulator = { showSimulatorSheet = true }
                                 )
                             }
 

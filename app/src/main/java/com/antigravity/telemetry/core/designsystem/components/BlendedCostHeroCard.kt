@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -52,6 +53,7 @@ fun BlendedCostHeroCard(
     petrolRatioPercent: Double,
     cngCostPerKm: Double,
     petrolCostPerKm: Double,
+    odometerKm: Double = 0.0,
     modifier: Modifier = Modifier
 ) {
     val animatedCngRatio by animateFloatAsState(targetValue = (cngRatioPercent / 100f).toFloat(), label = "cngRatio")
@@ -108,28 +110,28 @@ fun BlendedCostHeroCard(
                     )
                 }
 
-                if (costPerKm > 0) {
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(CngBadge)
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.TrendingDown,
-                            contentDescription = null,
-                            tint = CngAccent,
-                            modifier = Modifier.size(13.dp)
-                        )
-                        Text(
-                            text = "4% vs last mo",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = CngAccent
-                        )
-                    }
+                // Odometer Pill
+                Row(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(SurfaceSubtle)
+                        .border(1.dp, SlateSoft.copy(alpha = 0.8f), CircleShape)
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Speed,
+                        contentDescription = "Odometer",
+                        tint = SlateTextMuted,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Text(
+                        text = if (odometerKm > 0) String.format(java.util.Locale.US, "%,.0f km", odometerKm) else "-- km",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SlateTextMain
+                    )
                 }
             }
 

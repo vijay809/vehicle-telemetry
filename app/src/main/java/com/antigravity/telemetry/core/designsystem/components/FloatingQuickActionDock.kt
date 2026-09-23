@@ -39,11 +39,15 @@ import com.antigravity.telemetry.core.designsystem.SurfaceWhite
 
 @Composable
 fun FloatingQuickActionDock(
+    currentRoute: String = "dashboard",
     onDashboardClick: () -> Unit = {},
     onRefillClick: () -> Unit,
     onHistoryClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDashboard = currentRoute == "dashboard"
+    val isHistory = currentRoute == "ledger" || currentRoute == "history"
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -69,7 +73,7 @@ fun FloatingQuickActionDock(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Ghost action: Dashboard (Feature placeholder)
+                // Action: Dashboard
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -86,14 +90,14 @@ fun FloatingQuickActionDock(
                     Icon(
                         imageVector = Icons.Default.Dashboard,
                         contentDescription = "Dashboard",
-                        tint = CngAccent,
+                        tint = if (isDashboard) CngAccent else SlateTextMuted,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         text = "Dashboard",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = CngAccent
+                        fontWeight = if (isDashboard) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (isDashboard) CngAccent else SlateTextMuted
                     )
                 }
 
@@ -131,7 +135,7 @@ fun FloatingQuickActionDock(
                     }
                 }
 
-                // Ghost action: History
+                // Action: History
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -148,14 +152,14 @@ fun FloatingQuickActionDock(
                     Icon(
                         imageVector = Icons.Default.ReceiptLong,
                         contentDescription = "History",
-                        tint = SlateTextMuted,
+                        tint = if (isHistory) CngAccent else SlateTextMuted,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         text = "History",
                         fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SlateTextMuted
+                        fontWeight = if (isHistory) FontWeight.Bold else FontWeight.SemiBold,
+                        color = if (isHistory) CngAccent else SlateTextMuted
                     )
                 }
             }

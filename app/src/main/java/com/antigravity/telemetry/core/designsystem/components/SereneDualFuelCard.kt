@@ -209,72 +209,15 @@ fun CngEfficiencyCard(
                 }
             }
 
-            // Only show meter bar if vehicle actually provides tank level data (no guesswork)
-            if (tankPercent != null && !isCngExhausted) {
-                val animatedTank by animateFloatAsState(
-                    targetValue = (tankPercent / 100f).toFloat().coerceIn(0f, 1f),
-                    label = "cngTank"
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceSubtle)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(animatedTank)
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(CngAccent)
-                    )
-                }
-            }
-
-            // Footer note
-            if (isCngExhausted && exhaustedAtOdoKm != null) {
-                val reserveKm = (currentOdoKm - exhaustedAtOdoKm).coerceAtLeast(0.0)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = AlertAccent,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = "Marked empty at ${String.format("%,.0f", exhaustedAtOdoKm)} km",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = AlertAccent
-                        )
-                    }
-                    Text(
-                        text = "+${String.format("%.0f", reserveKm)} km on reserve",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PetrolAccent
-                    )
-                }
-            }
-
             // Integrated Last Fill Details
-            if (lastFill != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedSm)
-                        .background(if (isCngExhausted) SlateSoft.copy(alpha = 0.5f) else SurfaceSubtle)
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
-                ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedSm)
+                    .background(if (isCngExhausted) SlateSoft.copy(alpha = 0.5f) else SurfaceSubtle)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                if (lastFill != null) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -331,6 +274,97 @@ fun CngEfficiencyCard(
                             )
                         }
                     }
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedSm)
+                                .background(if (isCngExhausted) SlateSoft else CngPastelBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EvStation,
+                                contentDescription = null,
+                                tint = if (isCngExhausted) SlateTextMuted else CngAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "LAST CNG FILL",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                                color = SlateTextFaint
+                            )
+                            Text(
+                                text = "No refill logged yet",
+                                fontSize = 11.sp,
+                                color = SlateTextMuted
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Only show meter bar if vehicle actually provides tank level data (no guesswork)
+            if (tankPercent != null && !isCngExhausted) {
+                val animatedTank by animateFloatAsState(
+                    targetValue = (tankPercent / 100f).toFloat().coerceIn(0f, 1f),
+                    label = "cngTank"
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(CircleShape)
+                        .background(SurfaceSubtle)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedTank)
+                            .height(8.dp)
+                            .clip(CircleShape)
+                            .background(CngAccent)
+                    )
+                }
+            }
+
+            // Footer note: reserve when exhausted
+            if (isCngExhausted && exhaustedAtOdoKm != null) {
+                val reserveKm = (currentOdoKm - exhaustedAtOdoKm).coerceAtLeast(0.0)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = AlertAccent,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = "Marked empty at ${String.format("%,.0f", exhaustedAtOdoKm)} km",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = AlertAccent
+                        )
+                    }
+                    Text(
+                        text = "+${String.format("%.0f", reserveKm)} km on reserve",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = PetrolAccent
+                    )
                 }
             }
         }
@@ -444,7 +478,7 @@ fun PetrolEfficiencyCard(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Top row: Title on left, Cold Start Toggle & Status Badge on right
+            // Top row: Title on left, Status Badge on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -476,29 +510,19 @@ fun PetrolEfficiencyCard(
                     )
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(if (isPetrolActive) PetrolBadge else SurfaceSubtle)
+                        .border(1.dp, if (isPetrolActive) PetrolPastelBorder.copy(alpha = 0.6f) else SlateSoft, CircleShape)
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    PetrolColdStartToggle(
-                        includeColdStart = includeColdStart,
-                        onToggle = { onToggleColdStart?.invoke(it) }
+                    Text(
+                        text = if (isPetrolActive) "In Use" else "Reserve",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isPetrolActive) PetrolAccent else SlateTextMuted
                     )
-
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(PetrolBadge)
-                            .border(1.dp, PetrolPastelBorder.copy(alpha = 0.6f), CircleShape)
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = if (isPetrolActive) "In Use" else "Reserve",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = PetrolAccent
-                        )
-                    }
                 }
             }
 
@@ -540,77 +564,20 @@ fun PetrolEfficiencyCard(
                         text = "${String.format(Locale.US, "%.0f", currentTripKm)} km",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = PetrolAccent
+                        color = SlateTextMain
                     )
                 }
             }
-
-            // Only show meter bar if petrol percentage is actually measured by vehicle (no guesswork)
-            if (petrolPercent != null) {
-                val animatedTank by animateFloatAsState(
-                    targetValue = (petrolPercent / 100f).toFloat().coerceIn(0f, 1f),
-                    label = "petrolTank"
-                )
-                val remainingLiters = (petrolPercent / 100.0) * 45.0
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceSubtle)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(animatedTank)
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(PetrolAccent)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${String.format(Locale.US, "%.0f", petrolPercent)}% remaining (approx ${String.format(Locale.US, "%.1f", remainingLiters)} L)",
-                        fontSize = 11.sp,
-                        color = SlateTextMuted
-                    )
-                    if (estimatedRangeKm > 0) {
-                        Text(
-                            text = "Est. Range: ~${String.format(Locale.US, "%.0f", estimatedRangeKm)} km",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = PetrolAccent
-                        )
-                    }
-                }
-            }
-
-            // Cold Start Adjustment Footnote
-            Text(
-                text = if (includeColdStart) {
-                    if (coldStartDeductionKm > 0) "+${String.format(Locale.US, "%.1f", coldStartDeductionKm)} km cold start warmup credited ($totalColdStarts starts)"
-                    else "1.2 km/cold start adj included"
-                } else {
-                    "Pure petrol driving only (cold start warmup excluded)"
-                },
-                fontSize = 10.sp,
-                color = SlateTextFaint
-            )
 
             // Integrated Last Fill Details
-            if (lastFill != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedSm)
-                        .background(SurfaceSubtle)
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
-                ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedSm)
+                    .background(SurfaceSubtle)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                if (lastFill != null) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -667,74 +634,165 @@ fun PetrolEfficiencyCard(
                             )
                         }
                     }
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedSm)
+                                .background(PetrolPastelBg),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocalGasStation,
+                                contentDescription = null,
+                                tint = PetrolAccent,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "LAST PETROL FILL",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                                color = SlateTextFaint
+                            )
+                            Text(
+                                text = "No refill logged yet",
+                                fontSize = 11.sp,
+                                color = SlateTextMuted
+                            )
+                        }
+                    }
                 }
             }
 
+            // Only show meter bar if petrol percentage is actually measured by vehicle (no guesswork)
+            if (petrolPercent != null) {
+                val animatedTank by animateFloatAsState(
+                    targetValue = (petrolPercent / 100f).toFloat().coerceIn(0f, 1f),
+                    label = "petrolTank"
+                )
+                val remainingLiters = (petrolPercent / 100.0) * 45.0
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(CircleShape)
+                        .background(SurfaceSubtle)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(animatedTank)
+                            .height(8.dp)
+                            .clip(CircleShape)
+                            .background(PetrolAccent)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "${String.format(Locale.US, "%.0f", petrolPercent)}% remaining (approx ${String.format(Locale.US, "%.1f", remainingLiters)} L)",
+                        fontSize = 11.sp,
+                        color = SlateTextMuted
+                    )
+                    if (estimatedRangeKm > 0) {
+                        Text(
+                            text = "Est. Range: ~${String.format(Locale.US, "%.0f", estimatedRangeKm)} km",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PetrolAccent
+                        )
+                    }
+                }
+            }
+
+            // Cold Start & Adjustment Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Subtractive residual (1.2 km/cold start)",
-                    fontSize = 11.sp,
+                    text = if (includeColdStart) {
+                        if (coldStartDeductionKm > 0) "+${String.format(Locale.US, "%.1f", coldStartDeductionKm)} km warmup credited ($totalColdStarts starts)"
+                        else "1.2 km/cold start adj included"
+                    } else {
+                        "Cold start warmup excluded"
+                    },
+                    fontSize = 10.sp,
                     color = SlateTextFaint,
                     modifier = Modifier.weight(1f)
                 )
 
-                if (onMarkLowFuel != null) {
-                    if (isLowFuelMarked) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(AlertPastelBg)
-                                .border(1.dp, AlertPastelBorder, CircleShape)
-                                .padding(horizontal = 9.dp, vertical = 4.dp)
+                PetrolColdStartToggle(
+                    includeColdStart = includeColdStart,
+                    onToggle = { onToggleColdStart?.invoke(it) }
+                )
+            }
+
+            // Low Fuel Reserve Indicator / Action (if applicable)
+            if (onMarkLowFuel != null) {
+                if (isLowFuelMarked) {
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(AlertPastelBg)
+                            .border(1.dp, AlertPastelBorder, CircleShape)
+                            .padding(horizontal = 9.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = AlertAccent,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Text(
-                                    text = if (lowFuelOdometerKm != null) "Reserve @ ${String.format("%,.0f", lowFuelOdometerKm)} km" else "Reserve Active",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = AlertAccent
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = AlertAccent,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = if (lowFuelOdometerKm != null) "Reserve @ ${String.format("%,.0f", lowFuelOdometerKm)} km" else "Reserve Active",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = AlertAccent
+                            )
                         }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(PetrolPastelBg)
-                                .border(1.dp, PetrolPastelBorder, CircleShape)
-                                .clickable(onClick = onMarkLowFuel)
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(PetrolPastelBg)
+                            .border(1.dp, PetrolPastelBorder, CircleShape)
+                            .clickable(onClick = onMarkLowFuel)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = PetrolAccent,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Text(
-                                    text = "Mark Low Fuel",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PetrolAccent
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = PetrolAccent,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Text(
+                                text = "Mark Low Fuel",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PetrolAccent
+                            )
                         }
                     }
                 }

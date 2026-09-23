@@ -61,16 +61,12 @@ import com.antigravity.telemetry.core.designsystem.SlateTextMuted
 import com.antigravity.telemetry.core.designsystem.SurfaceWhite
 import com.antigravity.telemetry.core.designsystem.components.BlendedCostHeroCard
 import com.antigravity.telemetry.core.designsystem.components.CngEfficiencyCard
-import com.antigravity.telemetry.core.designsystem.components.FloatingQuickActionDock
 import com.antigravity.telemetry.core.designsystem.components.PetrolEfficiencyCard
 
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
-    onNavigateToRefill: () -> Unit,
-    onNavigateToLedger: () -> Unit,
     onOpenSimulator: () -> Unit,
-    onNavigateToDashboard: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -169,66 +165,24 @@ fun DashboardScreen(
                     }
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // Simulator Trigger Button
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(SurfaceWhite)
+                        .border(1.dp, SlateSoft, CircleShape)
+                        .clickable(onClick = onOpenSimulator),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Odometer Pill with Increased Text Size
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(SurfaceWhite)
-                            .border(1.dp, SlateSoft, CircleShape)
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Speed,
-                            contentDescription = null,
-                            tint = SlateTextMuted,
-                            modifier = Modifier.size(17.dp)
-                        )
-                        Text(
-                            text = String.format(java.util.Locale.US, "%,.0f", state.telemetry.odometerKm),
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = SlateTextMain
-                        )
-                        Text(
-                            text = "km",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = SlateTextFaint
-                        )
-                    }
-
-                    // Simulator Trigger Button
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(SurfaceWhite)
-                            .border(1.dp, SlateSoft, CircleShape)
-                            .clickable(onClick = onOpenSimulator),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = "Simulator",
-                            tint = SlateTextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "Simulator",
+                        tint = SlateTextMuted,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
-        },
-        bottomBar = {
-            FloatingQuickActionDock(
-                onDashboardClick = onNavigateToDashboard,
-                onRefillClick = onNavigateToRefill,
-                onHistoryClick = onNavigateToLedger
-            )
         }
     ) { padding ->
         LazyColumn(
@@ -247,7 +201,8 @@ fun DashboardScreen(
                     cngRatioPercent = state.blendedCost.cngSharePercent,
                     petrolRatioPercent = state.blendedCost.petrolSharePercent,
                     cngCostPerKm = state.blendedCost.cngCostPerKm,
-                    petrolCostPerKm = state.blendedCost.petrolCostPerKm
+                    petrolCostPerKm = state.blendedCost.petrolCostPerKm,
+                    odometerKm = state.telemetry.odometerKm
                 )
             }
 
