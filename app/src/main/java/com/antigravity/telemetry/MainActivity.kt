@@ -41,6 +41,7 @@ import com.antigravity.telemetry.core.designsystem.CanvasLavender
 import com.antigravity.telemetry.core.designsystem.CngAccent
 import com.antigravity.telemetry.core.designsystem.SlateTextMuted
 import com.antigravity.telemetry.core.designsystem.components.FloatingQuickActionDock
+import com.antigravity.telemetry.core.designsystem.components.SereneAppHeader
 import com.antigravity.telemetry.core.telemetry.StationaryRefillPrompt
 import com.antigravity.telemetry.feature.cngempty.CngEmptyTriggerScreen
 import com.antigravity.telemetry.feature.cngempty.CngEmptyViewModel
@@ -123,9 +124,20 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                val telemetrySnapshot by repository.telemetryState.collectAsState(initial = com.antigravity.telemetry.core.model.TelemetrySnapshot())
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     containerColor = CanvasLavender,
+                    topBar = {
+                        if (currentRoute == "dashboard" || currentRoute == "ledger") {
+                            SereneAppHeader(
+                                isConnected = telemetrySnapshot.isConnectedToAuto,
+                                vehicleName = "Victoris CNG",
+                                onOpenSimulator = { showSimulatorSheet = true }
+                            )
+                        }
+                    },
                     bottomBar = {
                         FloatingQuickActionDock(
                             currentRoute = currentRoute,

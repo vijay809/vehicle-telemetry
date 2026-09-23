@@ -91,127 +91,11 @@ fun FuelLedgerScreen(
     val state by viewModel.uiState.collectAsState()
     val dateFormatter = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
 
-    val pulseTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseAlpha by pulseTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseAlpha"
-    )
-
-    Scaffold(
+    LazyColumn(
         modifier = modifier.fillMaxSize(),
-        containerColor = CanvasLavender,
-        topBar = {
-            // Pinned Non-Scrolling Top Bar (Identical to Dashboard)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(CanvasLavender)
-                    .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                val isConnected = state.isConnectedToAuto
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.clip(RoundedSm)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedSm)
-                            .background(if (isConnected) CngBadge else Color(0xFFF1F5F9))
-                            .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, RoundedSm),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "VC",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isConnected) CngAccent else SlateTextMuted
-                        )
-                    }
-
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = state.vehicleName,
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SlateTextMain
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(if (isConnected) CngPastelBg else Color(0xFFF1F5F9))
-                                    .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, CircleShape)
-                                    .padding(horizontal = 7.dp, vertical = 2.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isConnected) CngAccent else SlateTextMuted)
-                                            .then(if (isConnected) Modifier.alpha(pulseAlpha) else Modifier)
-                                    )
-                                    Text(
-                                        text = if (isConnected) "Live Sync" else "Disconnected",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isConnected) CngAccent else SlateTextMuted
-                                    )
-                                }
-                            }
-                        }
-                        Text(
-                            text = if (isConnected) "Synced via Android Auto" else "Android Auto Disconnected",
-                            fontSize = 11.sp,
-                            color = SlateTextMuted,
-                            fontWeight = FontWeight.Normal
-                        )
-                    }
-                }
-
-                // Simulator Trigger Button
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceWhite)
-                        .border(1.dp, SlateSoft, CircleShape)
-                        .clickable(onClick = onOpenSimulator),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Tune,
-                        contentDescription = "Simulator",
-                        tint = SlateTextMuted,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-        }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
             // Screen Context Header
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -484,7 +368,6 @@ fun FuelLedgerScreen(
             }
         }
     }
-}
 
 @Composable
 private fun TimelineEventCard(
