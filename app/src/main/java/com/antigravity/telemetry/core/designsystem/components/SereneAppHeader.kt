@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
@@ -64,7 +65,8 @@ fun SereneAppHeader(
         modifier = modifier
             .fillMaxWidth()
             .background(CanvasLavender)
-            .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
+            .statusBarsPadding()
+            .padding(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
