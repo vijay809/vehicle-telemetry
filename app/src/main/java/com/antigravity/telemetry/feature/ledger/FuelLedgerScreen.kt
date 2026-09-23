@@ -39,11 +39,13 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -67,11 +69,9 @@ import com.antigravity.telemetry.core.designsystem.AlertAccent
 import com.antigravity.telemetry.core.designsystem.AlertPastelBg
 import com.antigravity.telemetry.core.designsystem.AlertPastelBorder
 import com.antigravity.telemetry.core.designsystem.CngAccent
-import com.antigravity.telemetry.core.designsystem.CngBadge
 import com.antigravity.telemetry.core.designsystem.CngPastelBg
 import com.antigravity.telemetry.core.designsystem.CngPastelBorder
 import com.antigravity.telemetry.core.designsystem.PetrolAccent
-import com.antigravity.telemetry.core.designsystem.PetrolBadge
 import com.antigravity.telemetry.core.designsystem.PetrolPastelBg
 import com.antigravity.telemetry.core.designsystem.PetrolPastelBorder
 import com.antigravity.telemetry.core.designsystem.Rounded2xl
@@ -84,7 +84,6 @@ import com.antigravity.telemetry.core.designsystem.SlateTextMuted
 import com.antigravity.telemetry.core.designsystem.SurfaceSubtle
 import com.antigravity.telemetry.core.designsystem.SurfaceWhite
 import com.antigravity.telemetry.core.designsystem.SwitchLavenderAccent
-import com.antigravity.telemetry.core.designsystem.SwitchLavenderBadge
 import com.antigravity.telemetry.core.designsystem.SwitchLavenderBg
 import com.antigravity.telemetry.core.designsystem.SwitchLavenderBorder
 import com.antigravity.telemetry.core.designsystem.components.OdometerUpdateSheet
@@ -107,6 +106,7 @@ fun FuelLedgerScreen(
     val state by viewModel.uiState.collectAsState()
     val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
     var showLocalOdoSheet by remember { mutableStateOf(false) }
+    var eventToDelete by remember { mutableStateOf<FuelEvent?>(null) }
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -424,13 +424,62 @@ fun FuelLedgerScreen(
                 TimelineEventCard(
                     event = event,
                     dateFormatter = dateFormatter,
-                    onDelete = { viewModel.deleteEvent(event.id) }
+                    onDelete = { eventToDelete = event }
                 )
             }
 
             item {
                 Spacer(modifier = Modifier.height(24.dp))
             }
+        }
+
+        // Delete Confirmation Dialog
+        eventToDelete?.let { targetEvent ->
+            AlertDialog(
+                onDismissRequest = { eventToDelete = null },
+                title = {
+                    Text(
+                        text = "Delete Event?",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SlateTextMain
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Are you sure you want to delete this event logged at ${String.format(Locale.US, "%,.0f km", targetEvent.odometerKm)}? This action cannot be undone.",
+                        fontSize = 14.sp,
+                        color = SlateTextMuted
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteEvent(targetEvent.id)
+                            eventToDelete = null
+                        }
+                    ) {
+                        Text(
+                            text = "Delete",
+                            fontWeight = FontWeight.Bold,
+                            color = AlertAccent
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { eventToDelete = null }
+                    ) {
+                        Text(
+                            text = "Cancel",
+                            fontWeight = FontWeight.Medium,
+                            color = SlateTextMuted
+                        )
+                    }
+                },
+                containerColor = SurfaceWhite,
+                shape = Rounded2xl
+            )
         }
 
         // Local Odometer Update Sheet fallback if not hoisted
@@ -463,8 +512,7 @@ private data class EventCardContent(
     val accentColor: Color,
     val pastelBg: Color,
     val pastelBorder: Color,
-    val icon: ImageVector,
-    val badgeLabel: String? = null
+    val icon: ImageVector
 )
 
 @Composable
@@ -478,8 +526,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             accentColor = CngAccent,
             pastelBg = CngPastelBg,
             pastelBorder = CngPastelBorder,
-            icon = Icons.Default.EvStation,
-            badgeLabel = if (event.isFullTank) "Full Tank" else null
+            icon = Icons.Default.EvStation
         )
 
         // 2. CNG Empty
@@ -490,8 +537,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             accentColor = CngAccent,
             pastelBg = CngPastelBg,
             pastelBorder = CngPastelBorder,
-            icon = Icons.Default.Propane,
-            badgeLabel = "Exhausted"
+            icon = Icons.Default.Propane
         )
 
         // 3. Petrol Fill
@@ -502,8 +548,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             accentColor = PetrolAccent,
             pastelBg = PetrolPastelBg,
             pastelBorder = PetrolPastelBorder,
-            icon = Icons.Default.LocalGasStation,
-            badgeLabel = if (event.isFullTank) "Full Tank" else null
+            icon = Icons.Default.LocalGasStation
         )
 
         // 4. Petrol Reserve
@@ -514,8 +559,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             accentColor = PetrolAccent,
             pastelBg = PetrolPastelBg,
             pastelBorder = PetrolPastelBorder,
-            icon = Icons.Default.WarningAmber,
-            badgeLabel = "Reserve"
+            icon = Icons.Default.WarningAmber
         )
 
         // 5. Odometer Update
@@ -526,8 +570,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             accentColor = SlateTextMuted,
             pastelBg = SurfaceSubtle,
             pastelBorder = SlateSoft,
-            icon = Icons.Default.Speed,
-            badgeLabel = "Calibrated"
+            icon = Icons.Default.Speed
         )
 
         // 6. Manual Fuel Switch
@@ -538,8 +581,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             accentColor = SwitchLavenderAccent,
             pastelBg = SwitchLavenderBg,
             pastelBorder = SwitchLavenderBorder,
-            icon = Icons.Default.SwapHoriz,
-            badgeLabel = if (event.fuelType == FuelType.CNG) "CNG Active" else "Petrol Active"
+            icon = Icons.Default.SwapHoriz
         )
 
         else -> EventCardContent(
@@ -549,8 +591,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             accentColor = SlateTextMuted,
             pastelBg = SurfaceSubtle,
             pastelBorder = SlateSoft,
-            icon = Icons.Default.Tune,
-            badgeLabel = null
+            icon = Icons.Default.Tune
         )
     }
 }
@@ -582,7 +623,7 @@ private fun TimelineEventCard(
             Box(
                 modifier = Modifier
                     .width(2.dp)
-                    .height(78.dp)
+                    .height(96.dp)
                     .background(
                         Brush.verticalGradient(
                             listOf(content.accentColor.copy(alpha = 0.5f), Color.Transparent)
@@ -591,7 +632,7 @@ private fun TimelineEventCard(
             )
         }
 
-        // Event Card with Accent Color Border
+        // Event Card with Accent Color Border and Restored Vertical Padding
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -599,7 +640,7 @@ private fun TimelineEventCard(
                 .clip(Rounded2xl)
                 .background(SurfaceWhite)
                 .border(1.2.dp, content.accentColor, Rounded2xl)
-                .padding(14.dp)
+                .padding(horizontal = 16.dp, vertical = 18.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -609,16 +650,16 @@ private fun TimelineEventCard(
                 // Left Column: Icon + Title, colored line description, subtitle description
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Icon + Title
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(26.dp)
                                 .clip(RoundedSm)
                                 .background(content.pastelBg)
                                 .border(1.dp, content.pastelBorder, RoundedSm),
@@ -628,33 +669,16 @@ private fun TimelineEventCard(
                                 imageVector = content.icon,
                                 contentDescription = null,
                                 tint = content.accentColor,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(15.dp)
                             )
                         }
 
                         Text(
                             text = content.title,
-                            fontSize = 14.sp,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = SlateTextMain
                         )
-
-                        content.badgeLabel?.let { badge ->
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(content.pastelBg)
-                                    .border(1.dp, content.pastelBorder, CircleShape)
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(
-                                    text = badge,
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = content.accentColor
-                                )
-                            }
-                        }
                     }
 
                     // Colored line description
@@ -668,19 +692,19 @@ private fun TimelineEventCard(
                     // Subtitle description
                     Text(
                         text = content.subtitle,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         color = SlateTextMuted,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 // Right Column: Date time 12h format, Odometer, Delete
                 Column(
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // Date time 12h format
                     Text(
@@ -690,35 +714,36 @@ private fun TimelineEventCard(
                         fontWeight = FontWeight.Medium
                     )
 
-                    // Odometer
+                    // Odometer (Enlarged value & icon)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Speed,
                             contentDescription = null,
                             tint = SlateTextMuted,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = String.format(Locale.US, "%,.0f km", event.odometerKm),
-                            fontSize = 13.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SlateTextMain
+                            color = SlateTextMain,
+                            letterSpacing = (-0.3).sp
                         )
                     }
 
-                    // Delete
+                    // Delete button
                     IconButton(
                         onClick = onDelete,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(26.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Delete,
                             contentDescription = "Delete Event",
                             tint = SlateTextFaint,
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
