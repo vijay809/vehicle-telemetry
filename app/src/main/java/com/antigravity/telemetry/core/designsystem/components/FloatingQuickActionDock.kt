@@ -49,17 +49,17 @@ fun FloatingQuickActionDock(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 28.dp, end = 28.dp, bottom = 18.dp, top = 4.dp),
+            .padding(start = 36.dp, end = 36.dp, bottom = 28.dp, top = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = 20.dp,
+                    elevation = 26.dp,
                     shape = CircleShape,
-                    spotColor = Color(0x250F172A),
-                    ambientColor = Color(0x120F172A)
+                    spotColor = Color(0x380F172A),
+                    ambientColor = Color(0x1A0F172A)
                 )
                 .clip(CircleShape)
                 .background(SurfaceWhite.copy(alpha = 0.96f))

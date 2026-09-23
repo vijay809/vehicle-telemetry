@@ -24,6 +24,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -123,9 +131,11 @@ class MainActivity : ComponentActivity() {
                             currentRoute = currentRoute,
                             onDashboardClick = {
                                 if (currentRoute != "dashboard") {
-                                    navController.navigate("dashboard") {
-                                        popUpTo("dashboard") { inclusive = true }
-                                        launchSingleTop = true
+                                    if (!navController.popBackStack("dashboard", inclusive = false)) {
+                                        navController.navigate("dashboard") {
+                                            popUpTo("dashboard") { inclusive = true }
+                                            launchSingleTop = true
+                                        }
                                     }
                                 }
                             },
@@ -143,7 +153,66 @@ class MainActivity : ComponentActivity() {
                     }
                 ) { innerPadding ->
                     Box(modifier = Modifier.padding(innerPadding)) {
-                        NavHost(navController = navController, startDestination = "dashboard") {
+                        NavHost(
+                            navController = navController,
+                            startDestination = "dashboard",
+                            enterTransition = {
+                                if (targetState.destination.route == "dashboard") {
+                                    slideInHorizontally(
+                                        initialOffsetX = { -it / 3 },
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + scaleIn(
+                                        initialScale = 0.94f,
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + fadeIn(animationSpec = tween(280))
+                                } else {
+                                    slideInHorizontally(
+                                        initialOffsetX = { it },
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + scaleIn(
+                                        initialScale = 0.94f,
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + fadeIn(animationSpec = tween(280))
+                                }
+                            },
+                            exitTransition = {
+                                if (targetState.destination.route == "dashboard") {
+                                    slideOutHorizontally(
+                                        targetOffsetX = { it },
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + scaleOut(
+                                        targetScale = 0.94f,
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + fadeOut(animationSpec = tween(280))
+                                } else {
+                                    slideOutHorizontally(
+                                        targetOffsetX = { -it / 3 },
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + scaleOut(
+                                        targetScale = 0.94f,
+                                        animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                    ) + fadeOut(animationSpec = tween(280))
+                                }
+                            },
+                            popEnterTransition = {
+                                slideInHorizontally(
+                                    initialOffsetX = { -it / 3 },
+                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                ) + scaleIn(
+                                    initialScale = 0.94f,
+                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                ) + fadeIn(animationSpec = tween(280))
+                            },
+                            popExitTransition = {
+                                slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                ) + scaleOut(
+                                    targetScale = 0.94f,
+                                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                                ) + fadeOut(animationSpec = tween(280))
+                            }
+                        ) {
                             composable("dashboard") {
                                 val dashboardVm = remember { DashboardViewModel(repository, preferences) }
                                 DashboardScreen(

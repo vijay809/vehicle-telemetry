@@ -716,7 +716,7 @@ fun PetrolEfficiencyCard(
                                 modifier = Modifier.size(13.dp)
                             )
                             Text(
-                                text = "Reserve",
+                                text = if (lowFuelOdometerKm != null) "Reserve @ ${String.format("%,.0f", lowFuelOdometerKm)} km" else "Reserve Active",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = AlertAccent
