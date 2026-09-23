@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +63,10 @@ fun OdometerUpdateSheet(
     currentOdometerKm: Double,
     onConfirmOdometer: (Double) -> Unit,
     onDismiss: () -> Unit,
+    title: String = "Update Odometer",
+    confirmButtonText: String? = null,
+    accentColor: Color = CngAccent,
+    icon: ImageVector = Icons.Default.Speed,
     modifier: Modifier = Modifier
 ) {
     var odoValue by remember(currentOdometerKm) {
@@ -116,16 +121,16 @@ fun OdometerUpdateSheet(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Speed,
+                            imageVector = icon,
                             contentDescription = null,
-                            tint = SlateTextMuted,
+                            tint = accentColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
 
                     Column {
                         Text(
-                            text = "Update Odometer",
+                            text = title,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
                             color = SlateTextMain
@@ -225,7 +230,7 @@ fun OdometerUpdateSheet(
                 singleLine = true,
                 shape = Rounded2xl,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = CngAccent,
+                    focusedBorderColor = accentColor,
                     unfocusedBorderColor = SlateSoft,
                     focusedContainerColor = SurfaceWhite,
                     unfocusedContainerColor = SurfaceWhite
@@ -267,7 +272,7 @@ fun OdometerUpdateSheet(
                             text = if (step > 0) "+$step" else "$step",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (step > 0) CngAccent else SlateTextMuted
+                            color = if (step > 0) accentColor else SlateTextMuted
                         )
                     }
                 }
@@ -288,14 +293,15 @@ fun OdometerUpdateSheet(
                     .height(50.dp),
                 shape = CircleShape,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = CngAccent,
+                    containerColor = accentColor,
                     contentColor = Color.White
                 )
             ) {
                 Text(
-                    text = "Save Odometer (${String.format(Locale.US, "%,.0f", odoValue)} km)",
+                    text = confirmButtonText ?: "Save Odometer (${String.format(Locale.US, "%,.0f", odoValue)} km)",
                     fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
             }
         }

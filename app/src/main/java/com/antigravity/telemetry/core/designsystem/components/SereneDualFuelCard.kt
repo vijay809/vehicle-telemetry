@@ -62,7 +62,9 @@ fun CngEfficiencyCard(
     isCngExhausted: Boolean,
     exhaustedAtOdoKm: Double?,
     currentOdoKm: Double,
+    isCngInUse: Boolean = true,
     lastFill: FuelEvent? = null,
+    onMarkEmpty: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // When CNG is empty, grey out the card
@@ -88,7 +90,7 @@ fun CngEfficiencyCard(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Top row: Title & status badge
+            // Top row: Title & status badge / Mark Empty button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -134,34 +136,70 @@ fun CngEfficiencyCard(
                             color = SlateTextMuted
                         )
                     }
-                } else if (tankPercent != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(CngBadge)
-                            .border(1.dp, CngPastelBorder.copy(alpha = 0.6f), CircleShape)
-                            .padding(horizontal = 10.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = "${String.format("%.0f", tankPercent)}% Tank",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = CngAccent
-                        )
-                    }
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(CngBadge.copy(alpha = 0.7f))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Text(
-                            text = "In Use",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = CngAccent
-                        )
+                        if (tankPercent != null) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(CngBadge)
+                                    .border(1.dp, CngPastelBorder.copy(alpha = 0.6f), CircleShape)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "${String.format("%.0f", tankPercent)}% Tank",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CngAccent
+                                )
+                            }
+                        } else if (isCngInUse) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(CngBadge.copy(alpha = 0.7f))
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "In Use",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = CngAccent
+                                )
+                            }
+                        }
+
+                        if (onMarkEmpty != null) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(SurfaceWhite)
+                                    .border(1.dp, CngAccent.copy(alpha = 0.6f), CircleShape)
+                                    .clickable(onClick = onMarkEmpty)
+                                    .padding(horizontal = 9.dp, vertical = 3.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Propane,
+                                        contentDescription = null,
+                                        tint = CngAccent,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Text(
+                                        text = "Mark Empty",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CngAccent
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -510,19 +548,95 @@ fun PetrolEfficiencyCard(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(if (isPetrolActive) PetrolBadge else SurfaceSubtle)
-                        .border(1.dp, if (isPetrolActive) PetrolPastelBorder.copy(alpha = 0.6f) else SlateSoft, CircleShape)
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = if (isPetrolActive) "In Use" else "Reserve",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isPetrolActive) PetrolAccent else SlateTextMuted
-                    )
+                    if (isPetrolActive) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(PetrolBadge.copy(alpha = 0.7f))
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "In Use",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = PetrolAccent
+                            )
+                        }
+                    }
+
+                    if (isLowFuelMarked) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(AlertPastelBg)
+                                .border(1.dp, AlertPastelBorder, CircleShape)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = AlertAccent,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = if (lowFuelOdometerKm != null) "Reserve @ ${String.format(Locale.US, "%,.0f", lowFuelOdometerKm)} km" else "Reserve Active",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AlertAccent
+                                )
+                            }
+                        }
+                    } else if (onMarkLowFuel != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(SurfaceWhite)
+                                .border(1.dp, PetrolAccent.copy(alpha = 0.6f), CircleShape)
+                                .clickable(onClick = onMarkLowFuel)
+                                .padding(horizontal = 9.dp, vertical = 3.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = PetrolAccent,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                                Text(
+                                    text = "Mark Low Fuel",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PetrolAccent
+                                )
+                            }
+                        }
+                    } else if (!isPetrolActive) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(SurfaceSubtle)
+                                .border(1.dp, SlateSoft, CircleShape)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text(
+                                text = "Reserve",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SlateTextMuted
+                            )
+                        }
+                    }
                 }
             }
 
@@ -695,63 +809,7 @@ fun PetrolEfficiencyCard(
                 )
             }
 
-            // Low Fuel Reserve Indicator / Action (if applicable)
-            if (onMarkLowFuel != null) {
-                if (isLowFuelMarked) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(AlertPastelBg)
-                            .border(1.dp, AlertPastelBorder, CircleShape)
-                            .padding(horizontal = 9.dp, vertical = 4.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = AlertAccent,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = if (lowFuelOdometerKm != null) "Reserve @ ${String.format("%,.0f", lowFuelOdometerKm)} km" else "Reserve Active",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AlertAccent
-                            )
-                        }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(PetrolPastelBg)
-                            .border(1.dp, PetrolPastelBorder, CircleShape)
-                            .clickable(onClick = onMarkLowFuel)
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = PetrolAccent,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Text(
-                                text = "Mark Low Fuel",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = PetrolAccent
-                            )
-                        }
-                    }
-                }
-            }
+
         }
     }
 }

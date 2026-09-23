@@ -6,8 +6,10 @@ import com.antigravity.telemetry.core.engine.BlendedCostResult
 import com.antigravity.telemetry.core.engine.CalculationEngines
 import com.antigravity.telemetry.core.engine.CngEfficiencyResult
 import com.antigravity.telemetry.core.engine.PetrolEfficiencyResult
+import com.antigravity.telemetry.core.model.EventSource
 import com.antigravity.telemetry.core.model.EventType
 import com.antigravity.telemetry.core.model.FuelEvent
+import com.antigravity.telemetry.core.model.FuelType
 import com.antigravity.telemetry.core.model.TelemetrySnapshot
 import com.antigravity.telemetry.core.model.VehicleMeta
 import com.antigravity.telemetry.core.repository.FuelPreferences
@@ -56,11 +58,9 @@ data class DashboardUiState(
     val isSimulationMode: Boolean = false,
     val isLowFuelPetrolMarked: Boolean = false,
     val lowFuelPetrolOdoKm: Double? = null,
-    val isPetrolColdStartIncluded: Boolean = true
+    val isPetrolColdStartIncluded: Boolean = true,
+    val isCngInUse: Boolean = true
 ) {
-    val isCngInUse: Boolean
-        get() = !cngEfficiency.isCngExhausted
-
     val displayedPetrolMileageKmPerL: Double
         get() = if (isPetrolColdStartIncluded) {
             petrolEfficiency.mileageWithColdStartKmPerL
@@ -128,12 +128,12 @@ class DashboardViewModel(
         val cng = CalculationEngines.calculateCngEfficiency(events, activeVehicle, currentOdo)
         val pet = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdo, telemetry.petrolPercent ?: 0.0, activeVehicle)
         val recent = events.firstOrNull { it.type == EventType.REFILL }
-        val lastCng = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == com.antigravity.telemetry.core.model.FuelType.CNG }
-        val lastPet = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == com.antigravity.telemetry.core.model.FuelType.PETROL }
+        val lastCng = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == FuelType.CNG }
+        val lastPet = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == FuelType.PETROL }
 
-        val lastPetrolRefillEvent = events.filter { it.type == EventType.REFILL && it.fuelType == com.antigravity.telemetry.core.model.FuelType.PETROL }
+        val lastPetrolRefillEvent = events.filter { it.type == EventType.REFILL && it.fuelType == FuelType.PETROL }
             .maxWithOrNull(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
-        val lastPetrolLowFuel = events.filter { it.type == EventType.FUEL_LOW && it.fuelType == com.antigravity.telemetry.core.model.FuelType.PETROL }
+        val lastPetrolLowFuel = events.filter { it.type == EventType.FUEL_LOW && it.fuelType == FuelType.PETROL }
             .maxWithOrNull(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
 
         val isLowFuel = when {
@@ -142,6 +142,20 @@ class DashboardViewModel(
             else -> lastPetrolLowFuel.timestamp > lastPetrolRefillEvent.timestamp && lastPetrolLowFuel.odometerKm >= lastPetrolRefillEvent.odometerKm
         }
         val lowFuelOdo = if (isLowFuel) lastPetrolLowFuel?.odometerKm else null
+
+        // Determine whether CNG is currently in use:
+        // Priority order:
+        // 1. If CNG is exhausted, CNG cannot be in use -> false
+        // 2. If a manual switch event occurred after the last refill/empty:
+        val latestSwitch = events
+            .filter { it.type == EventType.MANUAL_FUEL_SWITCH || it.type == EventType.CNG_EMPTY || (it.type == EventType.REFILL && it.fuelType == FuelType.CNG) }
+            .maxWithOrNull(compareBy<FuelEvent> { it.odometerKm }.thenBy { it.timestamp })
+
+        val cngInUse = when {
+            cng.isCngExhausted -> false
+            latestSwitch?.type == EventType.MANUAL_FUEL_SWITCH -> latestSwitch.fuelType == FuelType.CNG
+            else -> !cng.isCngExhausted
+        }
 
         DashboardUiState(
             vehicle = activeVehicle,
@@ -155,7 +169,8 @@ class DashboardViewModel(
             isSimulationMode = isSim,
             isLowFuelPetrolMarked = isLowFuel,
             lowFuelPetrolOdoKm = lowFuelOdo,
-            isPetrolColdStartIncluded = includeColdStart
+            isPetrolColdStartIncluded = includeColdStart,
+            isCngInUse = cngInUse
         )
     }.stateIn(
         scope = viewModelScope,
@@ -163,17 +178,46 @@ class DashboardViewModel(
         initialValue = DashboardUiState()
     )
 
-    fun markPetrolLowFuel(odometerKm: Double) {
+    fun markCngEmpty(odometerKm: Double) {
         viewModelScope.launch {
             val event = FuelEvent(
                 odometerKm = odometerKm,
-                source = com.antigravity.telemetry.core.model.EventSource.MANUAL,
-                type = EventType.FUEL_LOW,
-                fuelType = com.antigravity.telemetry.core.model.FuelType.PETROL,
+                source = EventSource.MANUAL,
+                type = EventType.CNG_EMPTY,
+                fuelType = null,
+                coldStartsSinceLastRefill = 0,
                 confirmedByUser = true,
                 isSimulation = repository.isSimulationMode.value
             )
             repository.addEvent(event)
+            repository.updateOdometer(odometerKm)
+        }
+    }
+
+    fun markPetrolLowFuel(odometerKm: Double) {
+        viewModelScope.launch {
+            val event = FuelEvent(
+                odometerKm = odometerKm,
+                source = EventSource.MANUAL,
+                type = EventType.FUEL_LOW,
+                fuelType = FuelType.PETROL,
+                confirmedByUser = true,
+                isSimulation = repository.isSimulationMode.value
+            )
+            repository.addEvent(event)
+            repository.updateOdometer(odometerKm)
+        }
+    }
+
+    fun logManualFuelSwitch(targetFuel: FuelType, odometerKm: Double) {
+        viewModelScope.launch {
+            repository.logManualFuelSwitch(targetFuel, odometerKm)
+        }
+    }
+
+    fun logOdometerUpdate(odometerKm: Double) {
+        viewModelScope.launch {
+            repository.logOdometerUpdate(odometerKm)
         }
     }
 }
