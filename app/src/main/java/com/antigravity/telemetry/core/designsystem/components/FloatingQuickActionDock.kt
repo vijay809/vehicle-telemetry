@@ -31,8 +31,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.antigravity.telemetry.core.designsystem.CngAccent
-import com.antigravity.telemetry.core.designsystem.CngAccentLight
-import com.antigravity.telemetry.core.designsystem.PetrolAccent
 import com.antigravity.telemetry.core.designsystem.SlateSoft
 import com.antigravity.telemetry.core.designsystem.SlateTextMuted
 import com.antigravity.telemetry.core.designsystem.SurfaceWhite
@@ -51,21 +49,21 @@ fun FloatingQuickActionDock(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 28.dp, end = 28.dp, bottom = 18.dp, top = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .shadow(
-                    elevation = 16.dp,
+                    elevation = 20.dp,
                     shape = CircleShape,
-                    spotColor = Color(0x140F172A),
-                    ambientColor = Color(0x0A0F172A)
+                    spotColor = Color(0x250F172A),
+                    ambientColor = Color(0x120F172A)
                 )
                 .clip(CircleShape)
-                .background(SurfaceWhite.copy(alpha = 0.95f))
-                .border(1.dp, SlateSoft.copy(alpha = 0.8f), CircleShape)
+                .background(SurfaceWhite.copy(alpha = 0.96f))
+                .border(1.dp, SlateSoft.copy(alpha = 0.85f), CircleShape)
                 .padding(horizontal = 8.dp, vertical = 6.dp)
         ) {
             Row(
@@ -101,18 +99,27 @@ fun FloatingQuickActionDock(
                     )
                 }
 
-                // Primary CTA: + Refill Fuel
+                // Primary CTA: + Refill Fuel with Green Glass Effect
                 Box(
                     modifier = Modifier
-                        .weight(1.4f)
+                        .weight(1.35f)
                         .height(48.dp)
-                        .shadow(6.dp, CircleShape, spotColor = Color(0x3010B981))
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = CircleShape,
+                            spotColor = Color(0x4510B981),
+                            ambientColor = Color(0x2010B981)
+                        )
                         .clip(CircleShape)
                         .background(
-                            Brush.horizontalGradient(
-                                listOf(CngAccent, CngAccentLight)
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xFF34D399).copy(alpha = 0.92f),
+                                    Color(0xFF059669).copy(alpha = 0.88f)
+                                )
                             )
                         )
+                        .border(1.dp, Color.White.copy(alpha = 0.40f), CircleShape)
                         .clickable(onClick = onRefillClick),
                     contentAlignment = Alignment.Center
                 ) {

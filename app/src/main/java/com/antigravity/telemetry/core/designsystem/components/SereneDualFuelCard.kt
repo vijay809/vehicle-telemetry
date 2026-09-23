@@ -671,51 +671,6 @@ fun PetrolEfficiencyCard(
                 }
             }
 
-            // Only show meter bar if petrol percentage is actually measured by vehicle (no guesswork)
-            if (petrolPercent != null) {
-                val animatedTank by animateFloatAsState(
-                    targetValue = (petrolPercent / 100f).toFloat().coerceIn(0f, 1f),
-                    label = "petrolTank"
-                )
-                val remainingLiters = (petrolPercent / 100.0) * 45.0
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceSubtle)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(animatedTank)
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(PetrolAccent)
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${String.format(Locale.US, "%.0f", petrolPercent)}% remaining (approx ${String.format(Locale.US, "%.1f", remainingLiters)} L)",
-                        fontSize = 11.sp,
-                        color = SlateTextMuted
-                    )
-                    if (estimatedRangeKm > 0) {
-                        Text(
-                            text = "Est. Range: ~${String.format(Locale.US, "%.0f", estimatedRangeKm)} km",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = PetrolAccent
-                        )
-                    }
-                }
-            }
-
             // Cold Start & Adjustment Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -761,7 +716,7 @@ fun PetrolEfficiencyCard(
                                 modifier = Modifier.size(13.dp)
                             )
                             Text(
-                                text = if (lowFuelOdometerKm != null) "Reserve @ ${String.format("%,.0f", lowFuelOdometerKm)} km" else "Reserve Active",
+                                text = "Reserve",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = AlertAccent

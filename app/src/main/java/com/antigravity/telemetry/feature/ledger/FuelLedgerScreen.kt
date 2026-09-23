@@ -17,12 +17,17 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Payments
@@ -30,6 +35,7 @@ import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Propane
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -39,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
@@ -78,105 +85,121 @@ import java.util.Locale
 @Composable
 fun FuelLedgerScreen(
     viewModel: FuelLedgerViewModel,
-    onBack: () -> Unit,
+    onOpenSimulator: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
     val dateFormatter = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault())
 
+    val pulseTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by pulseTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseAlpha"
+    )
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = CanvasLavender,
         topBar = {
+            // Pinned Non-Scrolling Top Bar (Identical to Dashboard)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .background(CanvasLavender)
+                    .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                val isConnected = state.isConnectedToAuto
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.clip(RoundedSm)
                 ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(RoundedSm)
-                            .background(SurfaceWhite)
-                            .border(1.dp, SlateSoft, RoundedSm)
-                    ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = SlateTextMain)
-                    }
-
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
+                            .size(42.dp)
                             .clip(RoundedSm)
-                            .background(CngPastelBg)
-                            .border(1.dp, CngPastelBorder, RoundedSm),
+                            .background(if (isConnected) CngBadge else Color(0xFFF1F5F9))
+                            .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, RoundedSm),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ElectricBolt,
-                            contentDescription = null,
-                            tint = CngAccent,
-                            modifier = Modifier.size(20.dp)
+                        Text(
+                            text = "VC",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isConnected) CngAccent else SlateTextMuted
                         )
                     }
 
                     Column {
-                        Text(
-                            text = "Victoris CNG",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = SlateTextMain
-                        )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            Text(
+                                text = state.vehicleName,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = SlateTextMain
+                            )
                             Box(
                                 modifier = Modifier
-                                    .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(CngAccent)
-                            )
-                            Text(
-                                text = "Synced via Android Auto",
-                                fontSize = 11.sp,
-                                color = CngAccent
-                            )
+                                    .background(if (isConnected) CngPastelBg else Color(0xFFF1F5F9))
+                                    .border(1.dp, if (isConnected) CngPastelBorder else SlateSoft, CircleShape)
+                                    .padding(horizontal = 7.dp, vertical = 2.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isConnected) CngAccent else SlateTextMuted)
+                                            .then(if (isConnected) Modifier.alpha(pulseAlpha) else Modifier)
+                                    )
+                                    Text(
+                                        text = if (isConnected) "Live Sync" else "Disconnected",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isConnected) CngAccent else SlateTextMuted
+                                    )
+                                }
+                            }
                         }
+                        Text(
+                            text = if (isConnected) "Synced via Android Auto" else "Android Auto Disconnected",
+                            fontSize = 11.sp,
+                            color = SlateTextMuted,
+                            fontWeight = FontWeight.Normal
+                        )
                     }
                 }
 
-                Row(
+                // Simulator Trigger Button
+                Box(
                     modifier = Modifier
+                        .size(38.dp)
                         .clip(CircleShape)
                         .background(SurfaceWhite)
                         .border(1.dp, SlateSoft, CircleShape)
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        .clickable(onClick = onOpenSimulator),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Speed,
-                        contentDescription = null,
+                        imageVector = Icons.Default.Tune,
+                        contentDescription = "Simulator",
                         tint = SlateTextMuted,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Text(
-                        text = String.format("%,.0f", state.odometerKm),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = SlateTextMain
-                    )
-                    Text(
-                        text = "km",
-                        fontSize = 10.sp,
-                        color = SlateTextFaint
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

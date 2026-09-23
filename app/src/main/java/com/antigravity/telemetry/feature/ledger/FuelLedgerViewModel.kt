@@ -32,7 +32,9 @@ data class FuelLedgerUiState(
     val cngRatioPercent: Double = 0.0,
     val petrolRatioPercent: Double = 0.0,
     val netRunningCost: Double = 0.0,
-    val odometerKm: Double = 0.0
+    val odometerKm: Double = 0.0,
+    val isConnectedToAuto: Boolean = false,
+    val vehicleName: String = "Victoris CNG"
 )
 
 class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewModel() {
@@ -67,7 +69,9 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
             cngRatioPercent = if (blended.totalCost > 0) blended.cngSharePercent else 0.0,
             petrolRatioPercent = if (blended.totalCost > 0) blended.petrolSharePercent else 0.0,
             netRunningCost = if (blended.blendedCostPerKm > 0) blended.blendedCostPerKm else 0.0,
-            odometerKm = telemetry.odometerKm
+            odometerKm = telemetry.odometerKm,
+            isConnectedToAuto = telemetry.isConnectedToAuto,
+            vehicleName = "Victoris CNG"
         )
     }.stateIn(
         scope = viewModelScope,

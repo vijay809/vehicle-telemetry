@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
                                 val ledgerVm = remember { FuelLedgerViewModel(repository) }
                                 FuelLedgerScreen(
                                     viewModel = ledgerVm,
-                                    onBack = { navController.popBackStack() }
+                                    onOpenSimulator = { showSimulatorSheet = true }
                                 )
                             }
                         }
