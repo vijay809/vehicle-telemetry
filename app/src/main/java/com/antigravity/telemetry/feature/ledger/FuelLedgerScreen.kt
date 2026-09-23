@@ -60,6 +60,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.antigravity.telemetry.core.designsystem.AlertAccent
@@ -104,7 +105,7 @@ fun FuelLedgerScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()) }
+    val dateFormatter = remember { SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault()) }
     var showLocalOdoSheet by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -453,10 +454,12 @@ fun FuelLedgerScreen(
 }
 
 /**
- * Visual styling configuration for each of the 6 standardized event types.
+ * Visual styling and text content configuration for each of the 6 standardized event types.
  */
-private data class EventVisualProfile(
+private data class EventCardContent(
     val title: String,
+    val coloredLine: String,
+    val subtitle: String,
     val accentColor: Color,
     val pastelBg: Color,
     val pastelBorder: Color,
@@ -465,11 +468,13 @@ private data class EventVisualProfile(
 )
 
 @Composable
-private fun getEventVisualProfile(event: FuelEvent): EventVisualProfile {
+private fun getEventCardContent(event: FuelEvent): EventCardContent {
     return when {
         // 1. CNG Fill
-        event.isCngRefill -> EventVisualProfile(
+        event.isCngRefill -> EventCardContent(
             title = "CNG Refill",
+            coloredLine = "${String.format(Locale.US, "%.2f", event.quantity ?: 0.0)} kg • ₹${String.format(Locale.US, "%,.0f", event.totalCost ?: 0.0)}",
+            subtitle = "${event.stationName ?: "CNG Station"} • ₹${String.format(Locale.US, "%.1f", event.pricePerUnit ?: 0.0)}/kg",
             accentColor = CngAccent,
             pastelBg = CngPastelBg,
             pastelBorder = CngPastelBorder,
@@ -478,19 +483,23 @@ private fun getEventVisualProfile(event: FuelEvent): EventVisualProfile {
         )
 
         // 2. CNG Empty
-        event.isCngEmpty -> EventVisualProfile(
+        event.isCngEmpty -> EventCardContent(
             title = "CNG Exhausted",
-            accentColor = CngAccent, // Theme Green
+            coloredLine = "Tank Exhausted • Switched to Petrol",
+            subtitle = "${event.coldStartsSinceLastRefill} cold starts deducted (${String.format(Locale.US, "%.1f", event.coldStartsSinceLastRefill * 1.2)} km)",
+            accentColor = CngAccent,
             pastelBg = CngPastelBg,
             pastelBorder = CngPastelBorder,
             icon = Icons.Default.Propane,
-            badgeLabel = "Tank Empty"
+            badgeLabel = "Exhausted"
         )
 
         // 3. Petrol Fill
-        event.isPetrolRefill -> EventVisualProfile(
+        event.isPetrolRefill -> EventCardContent(
             title = "Petrol Refill",
-            accentColor = PetrolAccent, // Theme Orange
+            coloredLine = "${String.format(Locale.US, "%.2f", event.quantity ?: 0.0)} L • ₹${String.format(Locale.US, "%,.0f", event.totalCost ?: 0.0)}",
+            subtitle = "${event.stationName ?: "Petrol Pump"} • ₹${String.format(Locale.US, "%.1f", event.pricePerUnit ?: 0.0)}/L",
+            accentColor = PetrolAccent,
             pastelBg = PetrolPastelBg,
             pastelBorder = PetrolPastelBorder,
             icon = Icons.Default.LocalGasStation,
@@ -498,37 +507,45 @@ private fun getEventVisualProfile(event: FuelEvent): EventVisualProfile {
         )
 
         // 4. Petrol Reserve
-        event.isPetrolReserve -> EventVisualProfile(
+        event.isPetrolReserve -> EventCardContent(
             title = "Petrol Reserve",
-            accentColor = PetrolAccent, // Theme Orange
+            coloredLine = "Low Reserve Level Active",
+            subtitle = "Refill recommended (~5L remaining in tank)",
+            accentColor = PetrolAccent,
             pastelBg = PetrolPastelBg,
             pastelBorder = PetrolPastelBorder,
             icon = Icons.Default.WarningAmber,
-            badgeLabel = "Low Fuel"
+            badgeLabel = "Reserve"
         )
 
         // 5. Odometer Update
-        event.isOdometerUpdate -> EventVisualProfile(
+        event.isOdometerUpdate -> EventCardContent(
             title = "Odometer Calibration",
-            accentColor = SlateTextMuted, // Theme Grey
+            coloredLine = "${String.format(Locale.US, "%,.0f km", event.odometerKm)} Cluster Reading",
+            subtitle = event.stationName ?: "Manual cluster calibration",
+            accentColor = SlateTextMuted,
             pastelBg = SurfaceSubtle,
             pastelBorder = SlateSoft,
             icon = Icons.Default.Speed,
-            badgeLabel = "Cluster Sync"
+            badgeLabel = "Calibrated"
         )
 
         // 6. Manual Fuel Switch
-        event.isManualFuelSwitch -> EventVisualProfile(
+        event.isManualFuelSwitch -> EventCardContent(
             title = "Manual Fuel Switch",
-            accentColor = SwitchLavenderAccent, // Lavender #5B4970
-            pastelBg = SwitchLavenderBg,        // Lavender #DCCCEC
-            pastelBorder = SwitchLavenderBorder,// Lavender #C4B5D6
+            coloredLine = "Switched to ${if (event.fuelType == FuelType.CNG) "CNG" else "Petrol"}",
+            subtitle = "Manual fuel selector toggle",
+            accentColor = SwitchLavenderAccent,
+            pastelBg = SwitchLavenderBg,
+            pastelBorder = SwitchLavenderBorder,
             icon = Icons.Default.SwapHoriz,
             badgeLabel = if (event.fuelType == FuelType.CNG) "CNG Active" else "Petrol Active"
         )
 
-        else -> EventVisualProfile(
+        else -> EventCardContent(
             title = "Vehicle Event",
+            coloredLine = "${String.format(Locale.US, "%,.0f km", event.odometerKm)} recorded",
+            subtitle = "System event log",
             accentColor = SlateTextMuted,
             pastelBg = SurfaceSubtle,
             pastelBorder = SlateSoft,
@@ -544,11 +561,11 @@ private fun TimelineEventCard(
     dateFormatter: SimpleDateFormat,
     onDelete: () -> Unit
 ) {
-    val profile = getEventVisualProfile(event)
+    val content = getEventCardContent(event)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Timeline node pin & vertical track
         Column(
@@ -557,320 +574,142 @@ private fun TimelineEventCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(18.dp)
+                    .size(16.dp)
                     .clip(CircleShape)
                     .background(SurfaceWhite)
-                    .border(3.dp, profile.accentColor, CircleShape)
+                    .border(3.dp, content.accentColor, CircleShape)
             )
             Box(
                 modifier = Modifier
                     .width(2.dp)
-                    .height(95.dp)
+                    .height(78.dp)
                     .background(
                         Brush.verticalGradient(
-                            listOf(profile.accentColor.copy(alpha = 0.5f), Color.Transparent)
+                            listOf(content.accentColor.copy(alpha = 0.5f), Color.Transparent)
                         )
                     )
             )
         }
 
-        // Event Card
+        // Event Card with Accent Color Border
         Box(
             modifier = Modifier
                 .weight(1f)
                 .shadow(2.dp, Rounded2xl, spotColor = Color(0x060F172A))
                 .clip(Rounded2xl)
                 .background(SurfaceWhite)
-                .border(1.dp, SlateSoft.copy(alpha = 0.8f), Rounded2xl)
+                .border(1.2.dp, content.accentColor, Rounded2xl)
                 .padding(14.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Top row: Type + Badge + Timestamp
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                // Left Column: Icon + Title, colored line description, subtitle description
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // Icon + Title
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(26.dp)
+                                .size(24.dp)
                                 .clip(RoundedSm)
-                                .background(profile.pastelBg)
-                                .border(1.dp, profile.pastelBorder, RoundedSm),
+                                .background(content.pastelBg)
+                                .border(1.dp, content.pastelBorder, RoundedSm),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = profile.icon,
+                                imageVector = content.icon,
                                 contentDescription = null,
-                                tint = profile.accentColor,
-                                modifier = Modifier.size(15.dp)
+                                tint = content.accentColor,
+                                modifier = Modifier.size(14.dp)
                             )
                         }
 
                         Text(
-                            text = profile.title,
+                            text = content.title,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = SlateTextMain
                         )
 
-                        profile.badgeLabel?.let { badge ->
+                        content.badgeLabel?.let { badge ->
                             Box(
                                 modifier = Modifier
                                     .clip(CircleShape)
-                                    .background(profile.pastelBg)
-                                    .border(1.dp, profile.pastelBorder, CircleShape)
+                                    .background(content.pastelBg)
+                                    .border(1.dp, content.pastelBorder, CircleShape)
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
                                     text = badge,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = profile.accentColor
+                                    color = content.accentColor
                                 )
                             }
                         }
                     }
 
-                    // Event Time
+                    // Colored line description
                     Text(
-                        text = dateFormatter.format(Date(event.timestamp)),
+                        text = content.coloredLine,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = content.accentColor
+                    )
+
+                    // Subtitle description
+                    Text(
+                        text = content.subtitle,
                         fontSize = 11.sp,
-                        color = SlateTextFaint
+                        color = SlateTextMuted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                // Middle section: Specific Event Content
-                when {
-                    // Refills (CNG or Petrol)
-                    event.isRefill -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                val unit = if (event.isCngRefill) "kg" else "L"
-                                Text(
-                                    text = "${String.format(Locale.US, "%.2f", event.quantity ?: 0.0)} $unit",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SlateTextMain
-                                )
-                                Text(
-                                    text = event.stationName ?: if (event.isCngRefill) "CNG Station" else "Petrol Pump",
-                                    fontSize = 11.sp,
-                                    color = SlateTextMuted
-                                )
-                            }
+                Spacer(modifier = Modifier.width(10.dp))
 
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = "₹${String.format(Locale.US, "%,.0f", event.totalCost ?: 0.0)}",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = profile.accentColor
-                                )
-                                val unit = if (event.isCngRefill) "kg" else "L"
-                                Text(
-                                    text = "₹${String.format(Locale.US, "%.1f", event.pricePerUnit ?: 0.0)}/$unit",
-                                    fontSize = 11.sp,
-                                    color = SlateTextFaint
-                                )
-                            }
-                        }
-                    }
-
-                    // CNG Empty
-                    event.isCngEmpty -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Auto-switched to Petrol",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = CngAccent
-                                )
-                                Text(
-                                    text = "${event.coldStartsSinceLastRefill} cold starts deducted (${String.format(Locale.US, "%.1f", event.coldStartsSinceLastRefill * 1.2)} km)",
-                                    fontSize = 11.sp,
-                                    color = SlateTextMuted
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedSm)
-                                    .background(CngPastelBg)
-                                    .border(1.dp, CngPastelBorder, RoundedSm)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "CNG Exhausted",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = CngAccent
-                                )
-                            }
-                        }
-                    }
-
-                    // Petrol Reserve
-                    event.isPetrolReserve -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "Low Reserve Level Active",
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PetrolAccent
-                                )
-                                Text(
-                                    text = "Refill recommended (~5L remaining in tank)",
-                                    fontSize = 11.sp,
-                                    color = SlateTextMuted
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedSm)
-                                    .background(PetrolPastelBg)
-                                    .border(1.dp, PetrolPastelBorder, RoundedSm)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Reserve Alert",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PetrolAccent
-                                )
-                            }
-                        }
-                    }
-
-                    // Odometer Update
-                    event.isOdometerUpdate -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "${String.format(Locale.US, "%,.0f", event.odometerKm)} km",
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SlateTextMain
-                                )
-                                Text(
-                                    text = event.stationName ?: "Manual cluster calibration",
-                                    fontSize = 11.sp,
-                                    color = SlateTextMuted
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedSm)
-                                    .background(SurfaceSubtle)
-                                    .border(1.dp, SlateSoft, RoundedSm)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Calibrated",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SlateTextMuted
-                                )
-                            }
-                        }
-                    }
-
-                    // Manual Fuel Switch
-                    event.isManualFuelSwitch -> {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                val fuelName = if (event.fuelType == FuelType.CNG) "CNG" else "Petrol"
-                                Text(
-                                    text = "Switched to $fuelName",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = SwitchLavenderAccent
-                                )
-                                Text(
-                                    text = "Manual fuel selector toggle",
-                                    fontSize = 11.sp,
-                                    color = SlateTextMuted
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedSm)
-                                    .background(SwitchLavenderBg)
-                                    .border(1.dp, SwitchLavenderBorder, RoundedSm)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "Mode Toggle",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SwitchLavenderAccent
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Bottom row: Odometer Pill + Delete action
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Right Column: Date time 12h format, Odometer, Delete
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    // Odometer display pill
+                    // Date time 12h format
+                    Text(
+                        text = dateFormatter.format(Date(event.timestamp)),
+                        fontSize = 11.sp,
+                        color = SlateTextFaint,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    // Odometer
                     Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(SurfaceSubtle)
-                            .border(1.dp, SlateSoft, CircleShape)
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Speed,
                             contentDescription = null,
                             tint = SlateTextMuted,
-                            modifier = Modifier.size(11.dp)
+                            modifier = Modifier.size(12.dp)
                         )
                         Text(
-                            text = "Odo: ${String.format(Locale.US, "%,.0f", event.odometerKm)} km",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = SlateTextMuted
+                            text = String.format(Locale.US, "%,.0f km", event.odometerKm),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SlateTextMain
                         )
                     }
 
+                    // Delete
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier.size(24.dp)
@@ -887,3 +726,4 @@ private fun TimelineEventCard(
         }
     }
 }
+
