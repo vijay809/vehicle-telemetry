@@ -21,6 +21,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import com.antigravity.telemetry.core.model.CostTimeframe
+import com.antigravity.telemetry.core.model.MileageSegment
+
 data class DashboardUiState(
     val vehicle: VehicleMeta = VehicleMeta(),
     val telemetry: TelemetrySnapshot = TelemetrySnapshot(),
@@ -59,7 +62,9 @@ data class DashboardUiState(
     val isLowFuelPetrolMarked: Boolean = false,
     val lowFuelPetrolOdoKm: Double? = null,
     val isPetrolColdStartIncluded: Boolean = true,
-    val isCngInUse: Boolean = true
+    val isCngInUse: Boolean = true,
+    val selectedCostTimeframe: CostTimeframe = CostTimeframe.ONE_MONTH,
+    val mileageSegments: List<MileageSegment> = emptyList()
 ) {
     val displayedPetrolMileageKmPerL: Double
         get() = if (isPetrolColdStartIncluded) {
@@ -92,9 +97,18 @@ class DashboardViewModel(
         preferences?.isPetrolColdStartIncluded() ?: true
     )
 
+    private val _selectedCostTimeframe = MutableStateFlow(
+        preferences?.getCostTimeframe() ?: CostTimeframe.ONE_MONTH
+    )
+
     fun setPetrolColdStartIncluded(included: Boolean) {
         _isPetrolColdStartIncluded.value = included
         preferences?.setPetrolColdStartIncluded(included)
+    }
+
+    fun setCostTimeframe(timeframe: CostTimeframe) {
+        _selectedCostTimeframe.value = timeframe
+        preferences?.setCostTimeframe(timeframe)
     }
 
     val uiState: StateFlow<DashboardUiState> = combine(
@@ -102,8 +116,9 @@ class DashboardViewModel(
         repository.telemetryState,
         repository.eventsFlow,
         repository.isSimulationMode,
-        _isPetrolColdStartIncluded
-    ) { vehicle, telemetry, events, isSim, includeColdStart ->
+        combine(_isPetrolColdStartIncluded, _selectedCostTimeframe) { cs, tf -> Pair(cs, tf) }
+    ) { vehicle, telemetry, events, isSim, prefPair ->
+        val (includeColdStart, timeframe) = prefPair
         val activeVehicle = vehicle ?: VehicleMeta()
         val currentOdo = if (telemetry.odometerKm > 0.0) {
             maxOf(
@@ -124,9 +139,10 @@ class DashboardViewModel(
             telemetry
         }
 
-        val blended = CalculationEngines.calculateBlendedCost(events, currentOdo)
+        val blended = CalculationEngines.calculateBlendedCost(events, currentOdo, timeframe)
         val cng = CalculationEngines.calculateCngEfficiency(events, activeVehicle, currentOdo)
         val pet = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdo, telemetry.petrolPercent ?: 0.0, activeVehicle)
+        val segments = CalculationEngines.calculateMileageSegments(events, activeVehicle, currentOdo)
         val recent = events.firstOrNull { it.type == EventType.REFILL }
         val lastCng = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == FuelType.CNG }
         val lastPet = events.firstOrNull { it.type == EventType.REFILL && it.fuelType == FuelType.PETROL }
@@ -170,7 +186,9 @@ class DashboardViewModel(
             isLowFuelPetrolMarked = isLowFuel,
             lowFuelPetrolOdoKm = lowFuelOdo,
             isPetrolColdStartIncluded = includeColdStart,
-            isCngInUse = cngInUse
+            isCngInUse = cngInUse,
+            selectedCostTimeframe = timeframe,
+            mileageSegments = segments
         )
     }.stateIn(
         scope = viewModelScope,

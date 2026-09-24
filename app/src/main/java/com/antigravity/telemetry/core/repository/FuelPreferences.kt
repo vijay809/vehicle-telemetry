@@ -135,4 +135,18 @@ class FuelPreferences(context: Context) {
     fun setColdStartThresholdHours(hours: Float) {
         prefs.edit().putFloat("cold_start_threshold_hours", hours).apply()
     }
+
+    // Cost Timeframe Selection (1M, 3M, 6M, 12M)
+    fun getCostTimeframe(): com.antigravity.telemetry.core.model.CostTimeframe {
+        val name = prefs.getString("cost_timeframe", com.antigravity.telemetry.core.model.CostTimeframe.ONE_MONTH.name)
+        return try {
+            com.antigravity.telemetry.core.model.CostTimeframe.valueOf(name ?: com.antigravity.telemetry.core.model.CostTimeframe.ONE_MONTH.name)
+        } catch (e: Exception) {
+            com.antigravity.telemetry.core.model.CostTimeframe.ONE_MONTH
+        }
+    }
+
+    fun setCostTimeframe(timeframe: com.antigravity.telemetry.core.model.CostTimeframe) {
+        prefs.edit().putString("cost_timeframe", timeframe.name).apply()
+    }
 }

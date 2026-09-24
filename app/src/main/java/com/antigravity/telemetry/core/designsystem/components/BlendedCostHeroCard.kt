@@ -49,6 +49,43 @@ import com.antigravity.telemetry.core.designsystem.SurfaceWhite
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.filled.Savings
+import com.antigravity.telemetry.core.model.CostTimeframe
+
+@Composable
+fun CostTimeframeSelector(
+    selectedTimeframe: CostTimeframe,
+    onTimeframeSelected: (CostTimeframe) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(SurfaceSubtle)
+            .border(1.dp, SlateSoft.copy(alpha = 0.8f), CircleShape)
+            .padding(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CostTimeframe.values().forEach { timeframe ->
+            val isSelected = timeframe == selectedTimeframe
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (isSelected) CngAccent else Color.Transparent)
+                    .clickable { onTimeframeSelected(timeframe) }
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = timeframe.label,
+                    fontSize = 10.sp,
+                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                    color = if (isSelected) SurfaceWhite else SlateTextMuted
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun BlendedCostHeroCard(
@@ -61,6 +98,8 @@ fun BlendedCostHeroCard(
     petrolCostPerKm: Double,
     odometerKm: Double = 0.0,
     monthlySavings: Double = 0.0,
+    selectedTimeframe: CostTimeframe = CostTimeframe.ONE_MONTH,
+    onTimeframeSelected: ((CostTimeframe) -> Unit)? = null,
     onOdometerClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -85,7 +124,7 @@ fun BlendedCostHeroCard(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header: Title & Odometer pill
+            // Header: Title & Timeframe Selector & Odometer pill
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -110,7 +149,7 @@ fun BlendedCostHeroCard(
                         )
                     }
                     Text(
-                        text = "BLENDED RUNNING COST",
+                        text = "RUNNING COST",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 0.6.sp,
@@ -118,31 +157,41 @@ fun BlendedCostHeroCard(
                     )
                 }
 
-                // Odometer Pill
                 Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(SurfaceSubtle)
-                        .border(1.dp, SlateSoft.copy(alpha = 0.8f), CircleShape)
-                        .then(
-                            if (onOdometerClick != null) Modifier.clickable { onOdometerClick() } else Modifier
-                        )
-                        .padding(horizontal = 9.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Speed,
-                        contentDescription = "Odometer",
-                        tint = SlateTextMuted,
-                        modifier = Modifier.size(13.dp)
+                    CostTimeframeSelector(
+                        selectedTimeframe = selectedTimeframe,
+                        onTimeframeSelected = { onTimeframeSelected?.invoke(it) }
                     )
-                    Text(
-                        text = if (odometerKm > 0) String.format(java.util.Locale.US, "%,.0f km", odometerKm) else "-- km",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = SlateTextMain
-                    )
+
+                    // Odometer Pill
+                    Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(SurfaceSubtle)
+                            .border(1.dp, SlateSoft.copy(alpha = 0.8f), CircleShape)
+                            .then(
+                                if (onOdometerClick != null) Modifier.clickable { onOdometerClick() } else Modifier
+                            )
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = "Odometer",
+                            tint = SlateTextMuted,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Text(
+                            text = if (odometerKm > 0) String.format(java.util.Locale.US, "%,.0f km", odometerKm) else "-- km",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = SlateTextMain
+                        )
+                    }
                 }
             }
 
@@ -214,7 +263,7 @@ fun BlendedCostHeroCard(
 
                 // Distance & Spend Caption
                 Text(
-                    text = if (totalDistanceKm > 0) "Based on last ${String.format("%,.0f", totalDistanceKm)} km (₹${String.format("%,.0f", totalSpend)} total spend)" else "Awaiting refill data to compute blended running cost",
+                    text = if (totalDistanceKm > 0) "${selectedTimeframe.label} timeframe: ${String.format("%,.0f", totalDistanceKm)} km (₹${String.format("%,.0f", totalSpend)} total spend)" else "No refill logged in ${selectedTimeframe.label} timeframe",
                     fontSize = 12.sp,
                     color = SlateTextMuted
                 )

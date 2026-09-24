@@ -20,6 +20,8 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Propane
 import androidx.compose.material.icons.filled.Warning
 import com.antigravity.telemetry.core.model.FuelEvent
+import com.antigravity.telemetry.core.model.CngMileageCondition
+import com.antigravity.telemetry.core.model.PetrolMileageCondition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -68,6 +70,10 @@ fun CngEfficiencyCard(
     currentOdoKm: Double,
     isCngInUse: Boolean = true,
     lastFill: FuelEvent? = null,
+    condition: CngMileageCondition = CngMileageCondition.AWAITING_DATA,
+    activeCycleColdStarts: Int = 0,
+    activeNetDistanceKm: Double = currentTripKm,
+    onMileageClick: (() -> Unit)? = null,
     onMarkEmpty: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -208,30 +214,63 @@ fun CngEfficiencyCard(
                 }
             }
 
-            // Middle row: Large km/kg & current trip
+            // Middle row: Large km/kg (with condition tag) & current trip
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Column(
+                    modifier = Modifier.then(
+                        if (onMileageClick != null) Modifier.clip(RoundedSm).clickable { onMileageClick() } else Modifier
+                    )
                 ) {
-                    Text(
-                        text = if (mileageKmPerKg > 0) String.format("%.1f", mileageKmPerKg) else "--",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = valueColor,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Text(
-                        text = "km/kg",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = SlateTextMuted,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = if (mileageKmPerKg > 0) String.format("%.1f", mileageKmPerKg) else "--",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = valueColor,
+                            letterSpacing = (-0.5).sp
+                        )
+                        Text(
+                            text = "km/kg",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = SlateTextMuted,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+
+                    if (condition != CngMileageCondition.AWAITING_DATA) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(if (isCngExhausted) SlateSoft else CngPastelBg)
+                                    .border(1.dp, if (isCngExhausted) SlateSoft else CngPastelBorder, CircleShape)
+                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = condition.label,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isCngExhausted) SlateTextMuted else CngAccent
+                                )
+                            }
+                            Text(
+                                text = "tap for breakdown",
+                                fontSize = 10.sp,
+                                color = SlateTextFaint
+                            )
+                        }
+                    }
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
@@ -248,6 +287,13 @@ fun CngEfficiencyCard(
                         fontWeight = FontWeight.Bold,
                         color = valueColor
                     )
+                    if (activeCycleColdStarts > 0) {
+                        Text(
+                            text = "Net: ${String.format("%.1f", activeNetDistanceKm)} km",
+                            fontSize = 10.sp,
+                            color = SlateTextFaint
+                        )
+                    }
                 }
             }
 
@@ -478,6 +524,9 @@ fun PetrolEfficiencyCard(
     onToggleColdStart: ((Boolean) -> Unit)? = null,
     coldStartDeductionKm: Double = 0.0,
     totalColdStarts: Int = 0,
+    condition: PetrolMileageCondition = PetrolMileageCondition.AWAITING_DATA,
+    activePetrolDistanceKm: Double = currentTripKm,
+    onMileageClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -621,30 +670,63 @@ fun PetrolEfficiencyCard(
                 }
             }
 
-            // Middle row: Large km/L on left, CURRENT TRIP on right (symmetrical with CNG card)
+            // Middle row: Large km/L on left (with condition tag), CURRENT TRIP on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Bottom
             ) {
-                Row(
-                    verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                Column(
+                    modifier = Modifier.then(
+                        if (onMileageClick != null) Modifier.clip(RoundedSm).clickable { onMileageClick() } else Modifier
+                    )
                 ) {
-                    Text(
-                        text = if (mileageKmPerL > 0) String.format(Locale.US, "%.1f", mileageKmPerL) else "--",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = SlateTextMain,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Text(
-                        text = "km/L",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = SlateTextMuted,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = if (mileageKmPerL > 0) String.format(Locale.US, "%.1f", mileageKmPerL) else "--",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = SlateTextMain,
+                            letterSpacing = (-0.5).sp
+                        )
+                        Text(
+                            text = "km/L",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = SlateTextMuted,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+
+                    if (condition != PetrolMileageCondition.AWAITING_DATA) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(PetrolPastelBg)
+                                    .border(1.dp, PetrolPastelBorder, CircleShape)
+                                    .padding(horizontal = 6.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = condition.label,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = PetrolAccent
+                                )
+                            }
+                            Text(
+                                text = "tap for breakdown",
+                                fontSize = 10.sp,
+                                color = SlateTextFaint
+                            )
+                        }
+                    }
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
@@ -661,6 +743,13 @@ fun PetrolEfficiencyCard(
                         fontWeight = FontWeight.Bold,
                         color = SlateTextMain
                     )
+                    if (activePetrolDistanceKm > 0 && activePetrolDistanceKm != currentTripKm) {
+                        Text(
+                            text = "Net Petrol: ${String.format(Locale.US, "%.1f", activePetrolDistanceKm)} km",
+                            fontSize = 10.sp,
+                            color = SlateTextFaint
+                        )
+                    }
                 }
             }
 

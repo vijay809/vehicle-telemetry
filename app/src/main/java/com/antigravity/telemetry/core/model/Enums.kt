@@ -34,3 +34,22 @@ enum class EventType {
     val isFill: Boolean
         get() = this == CNG_FILL || this == PETROL_FILL || this == REFILL
 }
+
+enum class CostTimeframe(val label: String, val months: Int) {
+    ONE_MONTH("1M", 1),
+    THREE_MONTHS("3M", 3),
+    SIX_MONTHS("6M", 6),
+    TWELVE_MONTHS("12M", 12)
+}
+
+enum class CngMileageCondition(val label: String, val description: String) {
+    FILL_TO_EMPTY("Fill ➔ Empty", "Tank ran completely empty"),
+    REFILL_BEFORE_EMPTY("Full ➔ Full", "Refilled to full before empty"),
+    AWAITING_DATA("Awaiting Data", "Not enough completed cycles")
+}
+
+enum class PetrolMileageCondition(val label: String, val description: String) {
+    FILL_TO_RESERVE("Fill ➔ Reserve", "Driven down to reserve indicator"),
+    REFILL_BEFORE_RESERVE("Full ➔ Full", "Refilled to full before reserve"),
+    AWAITING_DATA("Awaiting Data", "Not enough completed cycles")
+}

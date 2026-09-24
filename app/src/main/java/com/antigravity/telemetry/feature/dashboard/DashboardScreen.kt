@@ -59,6 +59,8 @@ import com.antigravity.telemetry.core.designsystem.components.OdometerUpdateShee
 import com.antigravity.telemetry.core.designsystem.components.PetrolEfficiencyCard
 import com.antigravity.telemetry.core.model.FuelType
 
+import com.antigravity.telemetry.core.designsystem.components.MileageBreakdownSheet
+
 private enum class DashboardOdoAction {
     UPDATE_ODOMETER,
     MARK_CNG_EMPTY,
@@ -76,6 +78,7 @@ fun DashboardScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     var activeOdoAction by remember { mutableStateOf<DashboardOdoAction?>(null) }
+    var showMileageBreakdown by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -95,6 +98,8 @@ fun DashboardScreen(
                 petrolCostPerKm = state.blendedCost.petrolCostPerKm,
                 odometerKm = state.telemetry.odometerKm,
                 monthlySavings = state.blendedCost.monthlySavingsVsPetrol,
+                selectedTimeframe = state.selectedCostTimeframe,
+                onTimeframeSelected = { viewModel.setCostTimeframe(it) },
                 onOdometerClick = { activeOdoAction = DashboardOdoAction.UPDATE_ODOMETER },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -111,6 +116,10 @@ fun DashboardScreen(
                     exhaustedAtOdoKm = state.cngEfficiency.exhaustedAtOdometerKm,
                     currentOdoKm = state.telemetry.odometerKm,
                     lastFill = state.lastCngRefill,
+                    condition = state.cngEfficiency.calculationCondition,
+                    activeCycleColdStarts = state.cngEfficiency.activeCycleColdStarts,
+                    activeNetDistanceKm = state.cngEfficiency.activeCycleNetDistanceKm,
+                    onMileageClick = { showMileageBreakdown = true },
                     onMarkEmpty = { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -131,6 +140,9 @@ fun DashboardScreen(
                     onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
                     coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
                     totalColdStarts = state.petrolEfficiency.totalColdStartsCount,
+                    condition = state.petrolEfficiency.calculationCondition,
+                    activePetrolDistanceKm = state.petrolEfficiency.activeCyclePetrolDistanceKm,
+                    onMileageClick = { showMileageBreakdown = true },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1.1f)
@@ -160,6 +172,9 @@ fun DashboardScreen(
                     onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
                     coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
                     totalColdStarts = state.petrolEfficiency.totalColdStartsCount,
+                    condition = state.petrolEfficiency.calculationCondition,
+                    activePetrolDistanceKm = state.petrolEfficiency.activeCyclePetrolDistanceKm,
+                    onMileageClick = { showMileageBreakdown = true },
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1.1f)
@@ -174,6 +189,10 @@ fun DashboardScreen(
                     currentOdoKm = state.telemetry.odometerKm,
                     isCngInUse = false,
                     lastFill = state.lastCngRefill,
+                    condition = state.cngEfficiency.calculationCondition,
+                    activeCycleColdStarts = state.cngEfficiency.activeCycleColdStarts,
+                    activeNetDistanceKm = state.cngEfficiency.activeCycleNetDistanceKm,
+                    onMileageClick = { showMileageBreakdown = true },
                     onMarkEmpty = if (!state.cngEfficiency.isCngExhausted) {
                         { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY }
                     } else null,
@@ -260,6 +279,20 @@ fun DashboardScreen(
                         }
                     }
                 }
+            }
+        }
+
+        // Mileage Breakdown Sheet ("Every mileage detail from an event to till now")
+        if (showMileageBreakdown) {
+            ModalBottomSheet(
+                onDismissRequest = { showMileageBreakdown = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+                containerColor = Color.Transparent
+            ) {
+                MileageBreakdownSheet(
+                    segments = state.mileageSegments,
+                    onDismiss = { showMileageBreakdown = false }
+                )
             }
         }
     }

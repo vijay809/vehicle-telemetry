@@ -406,4 +406,153 @@ class CalculationEnginesTest {
         assertEquals(217.6, result.netCngDistanceKm, 0.01)
         assertEquals(true, result.isCngExhausted)
     }
+
+    @Test
+    fun `Model A blended cost filters correctly by CostTimeframe`() {
+        val now = 1700000000000L // Reference time
+        val oneDayMs = 24L * 60 * 60 * 1000
+
+        val oldEvent = FuelEvent(
+            odometerKm = 30000.0,
+            type = EventType.REFILL,
+            fuelType = FuelType.PETROL,
+            totalCost = 5000.0,
+            timestamp = now - (60L * oneDayMs) // 2 months ago
+        )
+        val recentEvent = FuelEvent(
+            odometerKm = 31000.0,
+            type = EventType.REFILL,
+            fuelType = FuelType.CNG,
+            totalCost = 1000.0,
+            timestamp = now - (5L * oneDayMs) // 5 days ago
+        )
+
+        val events = listOf(oldEvent, recentEvent)
+
+        // 1 Month timeframe should only include the recentEvent
+        val result1M = CalculationEngines.calculateBlendedCost(
+            events = events,
+            currentOdometer = 31300.0,
+            timeframe = com.antigravity.telemetry.core.model.CostTimeframe.ONE_MONTH,
+            referenceTime = now
+        )
+        assertEquals(1000.0, result1M.totalCost, 0.01)
+        assertEquals(300.0, result1M.totalDistanceKm, 0.01) // 31300 - 31000
+        assertEquals(3.33, result1M.blendedCostPerKm, 0.01)
+
+        // 3 Month timeframe should include both events
+        val result3M = CalculationEngines.calculateBlendedCost(
+            events = events,
+            currentOdometer = 31300.0,
+            timeframe = com.antigravity.telemetry.core.model.CostTimeframe.THREE_MONTHS,
+            referenceTime = now
+        )
+        assertEquals(6000.0, result3M.totalCost, 0.01)
+        assertEquals(1300.0, result3M.totalDistanceKm, 0.01) // 31300 - 30000
+    }
+
+    @Test
+    fun `Model B CNG Condition 2 calculates mileage when refilling before empty with auto-cut`() {
+        val events = listOf(
+            // Initial fill: full tank at 40,000 km
+            FuelEvent(
+                odometerKm = 40000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                isFullTank = true,
+                quantity = 9.0
+            ),
+            // Refill before empty at 40,200 km (200 km raw) with 2 cold starts, filled 7.5 kg to auto-cut
+            FuelEvent(
+                odometerKm = 40200.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                isFullTank = true,
+                quantity = 7.5,
+                coldStartsSinceLastRefill = 2
+            )
+        )
+
+        // Raw = 200 km. Cold start deduction = 2 * 1.2 = 2.4 km. Net = 197.6 km.
+        // Fuel consumed = 7.5 kg
+        // Mileage = 197.6 / 7.5 = 26.346 km/kg
+        val result = CalculationEngines.calculateCngEfficiency(events, testVehicle, currentOdometer = 40250.0)
+
+        assertEquals(26.35, result.latestMileageKmPerKg, 0.02)
+        assertEquals(com.antigravity.telemetry.core.model.CngMileageCondition.REFILL_BEFORE_EMPTY, result.calculationCondition)
+        assertEquals(50.0, result.currentTripKm, 0.01) // 40250 - 40200
+        assertEquals(false, result.isCngExhausted)
+    }
+
+    @Test
+    fun `Model C Petrol Condition 2 calculates mileage when refilling before reserve with auto-cut`() {
+        val events = listOf(
+            // Initial full petrol refill at 30,000 km
+            FuelEvent(
+                odometerKm = 30000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.PETROL,
+                isFullTank = true,
+                quantity = 40.0
+            ),
+            // Refill before reserve at 30,300 km (300 km gross), filled 20.0 L to auto-cut
+            FuelEvent(
+                odometerKm = 30300.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.PETROL,
+                isFullTank = true,
+                quantity = 20.0
+            )
+        )
+
+        // Gross = 300 km. No CNG. Petrol dist = 300 km.
+        // Fuel consumed = 20.0 L
+        // Mileage = 300 / 20.0 = 15.0 km/L
+        val result = CalculationEngines.calculateResidualPetrolEfficiency(events, currentOdometer = 30350.0, petrolLevelPercent = 50.0, vehicle = testVehicle)
+
+        assertEquals(15.0, result.latestMileageKmPerL, 0.01)
+        assertEquals(com.antigravity.telemetry.core.model.PetrolMileageCondition.REFILL_BEFORE_RESERVE, result.calculationCondition)
+        assertEquals(50.0, result.residualDistanceKm, 0.01)
+    }
+
+    @Test
+    fun `calculateMileageSegments creates breakdown from every event up to ongoing cycle till now`() {
+        val events = listOf(
+            FuelEvent(
+                odometerKm = 40000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                isFullTank = true,
+                quantity = 9.0,
+                timestamp = 1000L
+            ),
+            FuelEvent(
+                odometerKm = 40200.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                isFullTank = true,
+                quantity = 7.5,
+                coldStartsSinceLastRefill = 1,
+                timestamp = 2000L
+            )
+        )
+
+        val segments = CalculationEngines.calculateMileageSegments(events, testVehicle, currentOdometer = 40260.0)
+
+        // We expect at least 1 completed CNG segment (40000 -> 40200) and 1 ongoing segment (40200 -> 40260)
+        val completedCng = segments.firstOrNull { !it.isOngoing && it.fuelType == FuelType.CNG }
+        val ongoingCng = segments.firstOrNull { it.isOngoing && it.fuelType == FuelType.CNG }
+
+        org.junit.Assert.assertNotNull(completedCng)
+        assertEquals(40000.0, completedCng!!.startOdometerKm, 0.01)
+        assertEquals(40200.0, completedCng.endOdometerKm, 0.01)
+        assertEquals("Full ➔ Full", completedCng.conditionLabel)
+        assertEquals(26.50, completedCng.calculatedMileage ?: 0.0, 0.02) // (200 - 1.2) / 7.5 = 198.8 / 7.5 = 26.506
+
+        org.junit.Assert.assertNotNull(ongoingCng)
+        assertEquals(40200.0, ongoingCng!!.startOdometerKm, 0.01)
+        assertEquals(40260.0, ongoingCng.endOdometerKm, 0.01)
+        assertEquals(60.0, ongoingCng.rawDistanceKm, 0.01)
+        assertEquals(true, ongoingCng.isOngoing)
+    }
 }

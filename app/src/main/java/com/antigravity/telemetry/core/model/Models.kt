@@ -67,6 +67,23 @@ data class DriveSegment(
     val isSimulation: Boolean = false
 )
 
+data class MileageSegment(
+    val id: String = UUID.randomUUID().toString(),
+    val fuelType: FuelType,
+    val startOdometerKm: Double,
+    val endOdometerKm: Double,
+    val rawDistanceKm: Double,
+    val coldStartsCount: Int,
+    val coldStartDeductionKm: Double,
+    val netDistanceKm: Double,
+    val fuelQuantity: Double?,
+    val calculatedMileage: Double?,
+    val conditionLabel: String,
+    val startTimestamp: Long,
+    val endTimestamp: Long,
+    val isOngoing: Boolean = false
+)
+
 data class TelemetrySnapshot(
     val odometerKm: Double = 0.0,
     val speedKmh: Double = 0.0,
