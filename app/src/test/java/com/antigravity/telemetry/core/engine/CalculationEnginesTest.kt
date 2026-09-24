@@ -358,4 +358,52 @@ class CalculationEnginesTest {
         assertEquals(null, result.exhaustedAtOdometerKm)
         assertEquals(5.0, result.currentTripKm, 0.01) // 40265 - 40260
     }
+
+    @Test
+    fun `Cold and Warm start events identify correctly and do not disrupt CNG calculations`() {
+        val coldEvent = FuelEvent(
+            odometerKm = 40100.0,
+            type = EventType.COLD_START,
+            source = EventSource.ANDROID_AUTO
+        )
+        val warmEvent = FuelEvent(
+            odometerKm = 40150.0,
+            type = EventType.WARM_START,
+            source = EventSource.ANDROID_AUTO
+        )
+
+        assertTrue(coldEvent.isColdStart)
+        assertTrue(!coldEvent.isWarmStart)
+        assertTrue(warmEvent.isWarmStart)
+        assertTrue(!warmEvent.isColdStart)
+
+        val eventsWithStarts = listOf(
+            FuelEvent(
+                odometerKm = 40000.0,
+                type = EventType.REFILL,
+                fuelType = FuelType.CNG,
+                quantity = 9.0,
+                coldStartsSinceLastRefill = 0,
+                timestamp = 1000L
+            ),
+            coldEvent,
+            warmEvent,
+            FuelEvent(
+                odometerKm = 40220.0,
+                type = EventType.CNG_EMPTY,
+                coldStartsSinceLastRefill = 2,
+                timestamp = 2000L
+            )
+        )
+
+        // Raw distance = 220 km
+        // Deduction = 2 * 1.2 = 2.4 km
+        // Net distance = 217.6 km
+        // Mileage = 217.6 / 9.0 = 24.177 km/kg
+        val result = CalculationEngines.calculateCngEfficiency(eventsWithStarts, testVehicle, currentOdometer = 40225.0)
+        assertEquals(24.18, result.latestMileageKmPerKg, 0.01)
+        assertEquals(2.4, result.coldStartDeductionKm, 0.01)
+        assertEquals(217.6, result.netCngDistanceKm, 0.01)
+        assertEquals(true, result.isCngExhausted)
+    }
 }

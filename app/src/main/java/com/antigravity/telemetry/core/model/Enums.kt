@@ -18,6 +18,8 @@ enum class EventType {
     PETROL_RESERVE,
     ODOMETER_UPDATE,
     MANUAL_FUEL_SWITCH,
+    COLD_START,
+    WARM_START,
 
     // Legacy types retained for database backward-compatibility
     REFILL,

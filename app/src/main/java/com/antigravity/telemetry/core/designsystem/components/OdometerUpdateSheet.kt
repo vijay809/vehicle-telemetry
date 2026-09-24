@@ -67,6 +67,8 @@ fun OdometerUpdateSheet(
     confirmButtonText: String? = null,
     accentColor: Color = CngAccent,
     icon: ImageVector = Icons.Default.Speed,
+    initialColdStarts: Int? = null,
+    onConfirmWithColdStarts: ((Double, Int) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var odoValue by remember(currentOdometerKm) {
@@ -74,6 +76,9 @@ fun OdometerUpdateSheet(
     }
     var inputText by remember(odoValue) {
         mutableStateOf(String.format(Locale.US, "%.0f", odoValue))
+    }
+    var coldStarts by remember(initialColdStarts) {
+        mutableStateOf(initialColdStarts ?: 0)
     }
 
     val deltaKm = odoValue - currentOdometerKm
@@ -278,13 +283,25 @@ fun OdometerUpdateSheet(
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            if (initialColdStarts != null) {
+                ColdStartStepper(
+                    count = coldStarts,
+                    onIncrement = { coldStarts += 1 },
+                    onDecrement = { coldStarts = maxOf(0, coldStarts - 1) }
+                )
+            } else {
+                Spacer(modifier = Modifier.height(6.dp))
+            }
 
             // Confirm CTA Button
             Button(
                 onClick = {
                     if (odoValue > 0) {
-                        onConfirmOdometer(odoValue)
+                        if (onConfirmWithColdStarts != null && initialColdStarts != null) {
+                            onConfirmWithColdStarts(odoValue, coldStarts)
+                        } else {
+                            onConfirmOdometer(odoValue)
+                        }
                         onDismiss()
                     }
                 },

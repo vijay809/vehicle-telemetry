@@ -178,19 +178,22 @@ class DashboardViewModel(
         initialValue = DashboardUiState()
     )
 
-    fun markCngEmpty(odometerKm: Double) {
+    fun getActiveCycleColdStarts(): Int = preferences?.getActiveCycleColdStarts() ?: 0
+
+    fun markCngEmpty(odometerKm: Double, coldStarts: Int = getActiveCycleColdStarts()) {
         viewModelScope.launch {
             val event = FuelEvent(
                 odometerKm = odometerKm,
                 source = EventSource.MANUAL,
                 type = EventType.CNG_EMPTY,
                 fuelType = null,
-                coldStartsSinceLastRefill = 0,
+                coldStartsSinceLastRefill = coldStarts,
                 confirmedByUser = true,
                 isSimulation = repository.isSimulationMode.value
             )
             repository.addEvent(event)
             repository.updateOdometer(odometerKm)
+            preferences?.resetActiveCycleColdStarts()
         }
     }
 

@@ -219,6 +219,35 @@ fun SimulatorBottomSheet(
                 }
             }
 
+            // Control 3b: Simulate Engine Starts (Cold vs Warm)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        telemetryManager.simulateColdStart()
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f).height(44.dp),
+                    shape = CircleShape,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateSoft)
+                ) {
+                    Text("❄️ Cold Start", fontWeight = FontWeight.Bold, color = SlateTextMain, fontSize = 12.sp)
+                }
+                OutlinedButton(
+                    onClick = {
+                        telemetryManager.simulateWarmStart()
+                        onDismiss()
+                    },
+                    modifier = Modifier.weight(1f).height(44.dp),
+                    shape = CircleShape,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, SlateSoft)
+                ) {
+                    Text("☀️ Warm Start", fontWeight = FontWeight.Bold, color = SlateTextMain, fontSize = 12.sp)
+                }
+            }
+
             // Control 4: Open Android Auto Settings
             OutlinedButton(
                 onClick = { launchAndroidAutoSettings(context) },

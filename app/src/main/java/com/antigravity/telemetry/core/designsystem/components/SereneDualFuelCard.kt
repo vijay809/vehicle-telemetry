@@ -25,6 +25,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import java.util.Locale
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -84,11 +88,11 @@ fun CngEfficiencyCard(
             .clip(Rounded3xl)
             .background(cardBg)
             .border(1.dp, cardBorder, Rounded3xl)
-            .padding(18.dp)
+            .padding(horizontal = 16.dp, vertical = 13.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Top row: Title & status badge / Mark Empty button
             Row(
@@ -247,20 +251,77 @@ fun CngEfficiencyCard(
                 }
             }
 
-            // Integrated Last Fill Details
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedSm)
-                    .background(if (isCngExhausted) SlateSoft.copy(alpha = 0.5f) else SurfaceSubtle)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            // Bottom Group: Last Fill Details Box + optional tank bar / reserve note
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                if (lastFill != null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                // Integrated Last Fill Details
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedSm)
+                        .background(if (isCngExhausted) SlateSoft.copy(alpha = 0.5f) else SurfaceSubtle)
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                ) {
+                    if (lastFill != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(RoundedSm)
+                                        .background(if (isCngExhausted) SlateSoft else CngPastelBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.EvStation,
+                                        contentDescription = null,
+                                        tint = if (isCngExhausted) SlateTextMuted else CngAccent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "LAST CNG FILL",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp,
+                                        color = SlateTextFaint
+                                    )
+                                    Text(
+                                        text = "${String.format("%.2f", lastFill.quantity ?: 0.0)} kg @ ₹${String.format("%.1f", lastFill.pricePerUnit ?: 0.0)}/kg",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = titleColor
+                                    )
+                                }
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                lastFill.totalCost?.let { cost ->
+                                    Text(
+                                        text = "₹${String.format("%.0f", cost)}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isCngExhausted) SlateTextMuted else CngAccent
+                                    )
+                                }
+                                Text(
+                                    text = "@ ${String.format("%,.0f", lastFill.odometerKm)} km",
+                                    fontSize = 10.sp,
+                                    color = SlateTextFaint
+                                )
+                            }
+                        }
+                    } else {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -288,121 +349,70 @@ fun CngEfficiencyCard(
                                     color = SlateTextFaint
                                 )
                                 Text(
-                                    text = "${String.format("%.2f", lastFill.quantity ?: 0.0)} kg @ ₹${String.format("%.1f", lastFill.pricePerUnit ?: 0.0)}/kg",
+                                    text = "No refill logged yet",
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = titleColor
+                                    color = SlateTextMuted
                                 )
                             }
-                        }
-
-                        Column(horizontalAlignment = Alignment.End) {
-                            lastFill.totalCost?.let { cost ->
-                                Text(
-                                    text = "₹${String.format("%.0f", cost)}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isCngExhausted) SlateTextMuted else CngAccent
-                                )
-                            }
-                            Text(
-                                text = "@ ${String.format("%,.0f", lastFill.odometerKm)} km",
-                                fontSize = 10.sp,
-                                color = SlateTextFaint
-                            )
                         }
                     }
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                }
+
+                // Only show meter bar if vehicle actually provides tank level data (no guesswork)
+                if (tankPercent != null && !isCngExhausted) {
+                    val animatedTank by animateFloatAsState(
+                        targetValue = (tankPercent / 100f).toFloat().coerceIn(0f, 1f),
+                        label = "cngTank"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceSubtle)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedSm)
-                                .background(if (isCngExhausted) SlateSoft else CngPastelBg),
-                            contentAlignment = Alignment.Center
+                                .fillMaxWidth(animatedTank)
+                                .height(8.dp)
+                                .clip(CircleShape)
+                                .background(CngAccent)
+                        )
+                    }
+                }
+
+                // Footer note: reserve when exhausted
+                if (isCngExhausted && exhaustedAtOdoKm != null) {
+                    val reserveKm = (currentOdoKm - exhaustedAtOdoKm).coerceAtLeast(0.0)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.EvStation,
+                                imageVector = Icons.Default.Warning,
                                 contentDescription = null,
-                                tint = if (isCngExhausted) SlateTextMuted else CngAccent,
+                                tint = AlertAccent,
                                 modifier = Modifier.size(14.dp)
                             )
-                        }
-                        Column {
                             Text(
-                                text = "LAST CNG FILL",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp,
-                                color = SlateTextFaint
-                            )
-                            Text(
-                                text = "No refill logged yet",
+                                text = "Marked empty at ${String.format("%,.0f", exhaustedAtOdoKm)} km",
                                 fontSize = 11.sp,
-                                color = SlateTextMuted
+                                fontWeight = FontWeight.Medium,
+                                color = AlertAccent
                             )
                         }
-                    }
-                }
-            }
-
-            // Only show meter bar if vehicle actually provides tank level data (no guesswork)
-            if (tankPercent != null && !isCngExhausted) {
-                val animatedTank by animateFloatAsState(
-                    targetValue = (tankPercent / 100f).toFloat().coerceIn(0f, 1f),
-                    label = "cngTank"
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape)
-                        .background(SurfaceSubtle)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(animatedTank)
-                            .height(8.dp)
-                            .clip(CircleShape)
-                            .background(CngAccent)
-                    )
-                }
-            }
-
-            // Footer note: reserve when exhausted
-            if (isCngExhausted && exhaustedAtOdoKm != null) {
-                val reserveKm = (currentOdoKm - exhaustedAtOdoKm).coerceAtLeast(0.0)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = AlertAccent,
-                            modifier = Modifier.size(14.dp)
-                        )
                         Text(
-                            text = "Marked empty at ${String.format("%,.0f", exhaustedAtOdoKm)} km",
+                            text = "+${String.format("%.0f", reserveKm)} km on reserve",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = AlertAccent
+                            fontWeight = FontWeight.Bold,
+                            color = PetrolAccent
                         )
                     }
-                    Text(
-                        text = "+${String.format("%.0f", reserveKm)} km on reserve",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = PetrolAccent
-                    )
                 }
             }
         }
@@ -415,70 +425,41 @@ fun PetrolColdStartToggle(
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier
             .clip(CircleShape)
-            .background(PetrolPastelBg)
-            .border(1.dp, PetrolPastelBorder.copy(alpha = 0.8f), CircleShape)
-            .padding(2.dp)
+            .clickable { onToggle(!includeColdStart) }
+            .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(1.dp)
-        ) {
-            // "w/ Cold Start" segment
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(if (includeColdStart) SurfaceWhite else Color.Transparent)
-                    .then(
-                        if (includeColdStart) Modifier.shadow(1.dp, CircleShape, spotColor = Color(0x1AD97706))
-                        else Modifier
-                    )
-                    .clickable { onToggle(true) }
-                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AcUnit,
-                        contentDescription = null,
-                        tint = if (includeColdStart) PetrolAccent else SlateTextFaint,
-                        modifier = Modifier.size(10.dp)
-                    )
-                    Text(
-                        text = "w/ CS",
-                        fontSize = 10.sp,
-                        fontWeight = if (includeColdStart) FontWeight.Bold else FontWeight.Medium,
-                        color = if (includeColdStart) PetrolAccent else SlateTextMuted
-                    )
-                }
-            }
-
-            // "w/o Cold Start" segment
-            Box(
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(if (!includeColdStart) SurfaceWhite else Color.Transparent)
-                    .then(
-                        if (!includeColdStart) Modifier.shadow(1.dp, CircleShape, spotColor = Color(0x1AD97706))
-                        else Modifier
-                    )
-                    .clickable { onToggle(false) }
-                    .padding(horizontal = 7.dp, vertical = 3.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "w/o",
-                    fontSize = 10.sp,
-                    fontWeight = if (!includeColdStart) FontWeight.Bold else FontWeight.Medium,
-                    color = if (!includeColdStart) PetrolAccent else SlateTextMuted
+        Text(
+            text = if (includeColdStart) "w/ CS" else "w/o CS",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (includeColdStart) PetrolAccent else SlateTextMuted
+        )
+        Switch(
+            checked = includeColdStart,
+            onCheckedChange = onToggle,
+            thumbContent = {
+                Icon(
+                    imageVector = Icons.Default.AcUnit,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = if (includeColdStart) PetrolAccent else SlateTextFaint
                 )
-            }
-        }
+            },
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = SurfaceWhite,
+                checkedTrackColor = PetrolAccent,
+                checkedBorderColor = PetrolAccent,
+                uncheckedThumbColor = SurfaceWhite,
+                uncheckedTrackColor = SlateSoft,
+                uncheckedBorderColor = SlateSoft
+            ),
+            modifier = Modifier.scale(0.78f)
+        )
     }
 }
 
@@ -510,11 +491,11 @@ fun PetrolEfficiencyCard(
                 if (isPetrolActive) PetrolAccent.copy(alpha = 0.5f) else PetrolPastelBorder.copy(alpha = 0.6f),
                 Rounded3xl
             )
-            .padding(18.dp)
+            .padding(horizontal = 16.dp, vertical = 13.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Top row: Title on left, Status Badge on right
             Row(
@@ -683,20 +664,77 @@ fun PetrolEfficiencyCard(
                 }
             }
 
-            // Integrated Last Fill Details
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedSm)
-                    .background(SurfaceSubtle)
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            // Bottom Group: Last Fill Details Box + Cold Start & Adjustment Row
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                if (lastFill != null) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                // Integrated Last Fill Details
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedSm)
+                        .background(SurfaceSubtle)
+                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                ) {
+                    if (lastFill != null) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(RoundedSm)
+                                        .background(PetrolPastelBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.LocalGasStation,
+                                        contentDescription = null,
+                                        tint = PetrolAccent,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                                Column {
+                                    Text(
+                                        text = "LAST PETROL FILL",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.5.sp,
+                                        color = SlateTextFaint
+                                    )
+                                    Text(
+                                        text = "${String.format("%.2f", lastFill.quantity ?: 0.0)} L @ ₹${String.format("%.1f", lastFill.pricePerUnit ?: 0.0)}/L",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SlateTextMain
+                                    )
+                                }
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                lastFill.totalCost?.let { cost ->
+                                    Text(
+                                        text = "₹${String.format("%.0f", cost)}",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PetrolAccent
+                                    )
+                                }
+                                Text(
+                                    text = "@ ${String.format("%,.0f", lastFill.odometerKm)} km",
+                                    fontSize = 10.sp,
+                                    color = SlateTextFaint
+                                )
+                            }
+                        }
+                    } else {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -724,89 +762,38 @@ fun PetrolEfficiencyCard(
                                     color = SlateTextFaint
                                 )
                                 Text(
-                                    text = "${String.format("%.2f", lastFill.quantity ?: 0.0)} L @ ₹${String.format("%.1f", lastFill.pricePerUnit ?: 0.0)}/L",
+                                    text = "No refill logged yet",
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SlateTextMain
+                                    color = SlateTextMuted
                                 )
                             }
-                        }
-
-                        Column(horizontalAlignment = Alignment.End) {
-                            lastFill.totalCost?.let { cost ->
-                                Text(
-                                    text = "₹${String.format("%.0f", cost)}",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PetrolAccent
-                                )
-                            }
-                            Text(
-                                text = "@ ${String.format("%,.0f", lastFill.odometerKm)} km",
-                                fontSize = 10.sp,
-                                color = SlateTextFaint
-                            )
-                        }
-                    }
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(RoundedSm)
-                                .background(PetrolPastelBg),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.LocalGasStation,
-                                contentDescription = null,
-                                tint = PetrolAccent,
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-                        Column {
-                            Text(
-                                text = "LAST PETROL FILL",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp,
-                                color = SlateTextFaint
-                            )
-                            Text(
-                                text = "No refill logged yet",
-                                fontSize = 11.sp,
-                                color = SlateTextMuted
-                            )
                         }
                     }
                 }
-            }
 
-            // Cold Start & Adjustment Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = if (includeColdStart) {
-                        if (coldStartDeductionKm > 0) "+${String.format(Locale.US, "%.1f", coldStartDeductionKm)} km warmup credited ($totalColdStarts starts)"
-                        else "1.2 km/cold start adj included"
-                    } else {
-                        "Cold start warmup excluded"
-                    },
-                    fontSize = 10.sp,
-                    color = SlateTextFaint,
-                    modifier = Modifier.weight(1f)
-                )
+                // Cold Start & Adjustment Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (includeColdStart) {
+                            if (coldStartDeductionKm > 0) "+${String.format(Locale.US, "%.1f", coldStartDeductionKm)} km warmup credited ($totalColdStarts starts)"
+                            else "1.2 km/cold start adj included"
+                        } else {
+                            "Cold start warmup excluded"
+                        },
+                        fontSize = 10.sp,
+                        color = SlateTextFaint,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                PetrolColdStartToggle(
-                    includeColdStart = includeColdStart,
-                    onToggle = { onToggleColdStart?.invoke(it) }
-                )
+                    PetrolColdStartToggle(
+                        includeColdStart = includeColdStart,
+                        onToggle = { onToggleColdStart?.invoke(it) }
+                    )
+                }
             }
 
 

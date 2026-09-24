@@ -49,6 +49,12 @@ data class FuelEvent(
 
     val isManualFuelSwitch: Boolean
         get() = type == EventType.MANUAL_FUEL_SWITCH
+
+    val isColdStart: Boolean
+        get() = type == EventType.COLD_START
+
+    val isWarmStart: Boolean
+        get() = type == EventType.WARM_START
 }
 
 data class DriveSegment(

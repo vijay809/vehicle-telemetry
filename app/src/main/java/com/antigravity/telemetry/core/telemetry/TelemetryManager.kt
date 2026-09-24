@@ -71,7 +71,80 @@ class TelemetryManager(
     }
 
     fun onConnectionStateChanged(isConnected: Boolean) {
+        val wasConnected = repository.vehicleHardwareState.value.isConnected
         repository.updateActualConnection(isConnected)
+        if (isConnected && !wasConnected) {
+            handleCarConnected()
+        } else if (!isConnected && wasConnected) {
+            handleCarDisconnected()
+        }
+    }
+
+    private fun handleCarConnected() {
+        val prefs = repository.preferences ?: return
+        val now = System.currentTimeMillis()
+        val lastConnect = prefs.getLastAutoConnectedTimestamp()
+        val lastDisconnect = prefs.getLastAutoDisconnectedTimestamp()
+
+        // Debounce: If re-connected within 2 minutes of last connect, treat as transient reconnect
+        if (lastConnect > 0 && (now - lastConnect) < 2 * 60 * 1000L) {
+            return
+        }
+
+        val thresholdHours = prefs.getColdStartThresholdHours()
+        val isColdStart = if (lastDisconnect == 0L) {
+            true // Initial baseline connection is considered a cold start
+        } else {
+            val diffHours = (now - lastDisconnect) / (1000.0 * 60.0 * 60.0)
+            diffHours >= thresholdHours
+        }
+
+        prefs.setLastAutoConnectedTimestamp(now)
+
+        scope.launch {
+            val currentOdo = repository.getLatestActualOdometer()
+            repository.logEngineStart(
+                isColdStart = isColdStart,
+                odometerKm = currentOdo,
+                timestamp = now
+            )
+            AutoTelemetryLogger.log(
+                "ENGINE_START",
+                "Android Auto connected -> ${if (isColdStart) "COLD START" else "WARM START"} logged @ $currentOdo km"
+            )
+        }
+    }
+
+    private fun handleCarDisconnected() {
+        val prefs = repository.preferences ?: return
+        val now = System.currentTimeMillis()
+        prefs.setLastAutoDisconnectedTimestamp(now)
+        AutoTelemetryLogger.log(
+            "ENGINE_STOP",
+            "Android Auto disconnected -> disconnect timestamp recorded for cooldown tracking"
+        )
+    }
+
+    fun simulateColdStart() {
+        scope.launch {
+            val currentOdo = repository.getLatestActualOdometer()
+            repository.logEngineStart(
+                isColdStart = true,
+                odometerKm = currentOdo,
+                timestamp = System.currentTimeMillis()
+            )
+        }
+    }
+
+    fun simulateWarmStart() {
+        scope.launch {
+            val currentOdo = repository.getLatestActualOdometer()
+            repository.logEngineStart(
+                isColdStart = false,
+                odometerKm = currentOdo,
+                timestamp = System.currentTimeMillis()
+            )
+        }
     }
 
     fun startDriveSimulation() {

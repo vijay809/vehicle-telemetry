@@ -27,8 +27,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.EvStation
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Payments
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WarningAmber
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -61,6 +64,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -421,11 +425,19 @@ fun FuelLedgerScreen(
 
             // Timeline Items (Sorted strictly by odometerKm DESC, then timestamp DESC)
             items(state.filteredEvents, key = { it.id }) { event ->
-                TimelineEventCard(
-                    event = event,
-                    dateFormatter = dateFormatter,
-                    onDelete = { eventToDelete = event }
-                )
+                if (event.isColdStart || event.isWarmStart) {
+                    SingleLineStartHistoryItem(
+                        event = event,
+                        dateFormatter = dateFormatter,
+                        onDelete = { eventToDelete = event }
+                    )
+                } else {
+                    TimelineEventCard(
+                        event = event,
+                        dateFormatter = dateFormatter,
+                        onDelete = { eventToDelete = event }
+                    )
+                }
             }
 
             item {
@@ -446,11 +458,20 @@ fun FuelLedgerScreen(
                     )
                 },
                 text = {
-                    Text(
-                        text = "Are you sure you want to delete this event logged at ${String.format(Locale.US, "%,.0f km", targetEvent.odometerKm)}? This action cannot be undone.",
-                        fontSize = 14.sp,
-                        color = SlateTextMuted
-                    )
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        EventCardSingleColumnPreview(
+                            event = targetEvent,
+                            dateFormatter = dateFormatter
+                        )
+                        Text(
+                            text = "This action cannot be undone.",
+                            fontSize = 12.sp,
+                            color = SlateTextFaint
+                        )
+                    }
                 },
                 confirmButton = {
                     TextButton(
@@ -584,6 +605,28 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             icon = Icons.Default.SwapHoriz
         )
 
+        // 7. Cold Start
+        event.isColdStart -> EventCardContent(
+            title = "Cold Start",
+            coloredLine = "Engine Started Cold (>3.5h off)",
+            subtitle = "Auto-detected via Android Auto connection",
+            accentColor = SlateTextMuted,
+            pastelBg = SurfaceSubtle,
+            pastelBorder = SlateSoft,
+            icon = Icons.Default.AcUnit
+        )
+
+        // 8. Warm Start
+        event.isWarmStart -> EventCardContent(
+            title = "Warm Start",
+            coloredLine = "Engine Started Warm (<3.5h off)",
+            subtitle = "Auto-detected via Android Auto connection",
+            accentColor = SlateTextMuted,
+            pastelBg = SurfaceSubtle,
+            pastelBorder = SlateSoft,
+            icon = Icons.Default.WbSunny
+        )
+
         else -> EventCardContent(
             title = "Vehicle Event",
             coloredLine = "${String.format(Locale.US, "%,.0f km", event.odometerKm)} recorded",
@@ -593,6 +636,78 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
             pastelBorder = SlateSoft,
             icon = Icons.Default.Tune
         )
+    }
+}
+
+@Composable
+private fun SingleLineStartHistoryItem(
+    event: FuelEvent,
+    dateFormatter: SimpleDateFormat,
+    onDelete: () -> Unit
+) {
+    val isCold = event.isColdStart
+    val label = if (isCold) "Cold start" else "Warm start"
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Small timeline track connector dot aligned with cards
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.width(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(7.dp)
+                    .clip(CircleShape)
+                    .background(SlateTextFaint.copy(alpha = 0.5f))
+            )
+        }
+
+        // Single line history container
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .clip(Rounded2xl)
+                .background(SurfaceWhite.copy(alpha = 0.7f))
+                .border(1.dp, SlateSoft.copy(alpha = 0.5f), Rounded2xl)
+                .padding(horizontal = 14.dp, vertical = 9.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left: Cold/Warm start (left align / grey / italic)
+            Text(
+                text = label,
+                fontSize = 13.sp,
+                fontStyle = FontStyle.Italic,
+                fontWeight = FontWeight.Normal,
+                color = SlateTextMuted
+            )
+
+            // Right: timestamp (right align) and subtle delete option
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = dateFormatter.format(Date(event.timestamp)),
+                    fontSize = 12.sp,
+                    color = SlateTextMuted
+                )
+                Icon(
+                    imageVector = Icons.Default.DeleteOutline,
+                    contentDescription = "Delete",
+                    tint = SlateTextFaint,
+                    modifier = Modifier
+                        .size(15.dp)
+                        .clickable(onClick = onDelete)
+                )
+            }
+        }
     }
 }
 
@@ -751,4 +866,109 @@ private fun TimelineEventCard(
         }
     }
 }
+
+/**
+ * Single-column layout preview of an event card used in delete confirmation dialog.
+ */
+@Composable
+private fun EventCardSingleColumnPreview(
+    event: FuelEvent,
+    dateFormatter: SimpleDateFormat,
+    modifier: Modifier = Modifier
+) {
+    val content = getEventCardContent(event)
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(2.dp, Rounded2xl, spotColor = Color(0x060F172A))
+            .clip(Rounded2xl)
+            .background(SurfaceWhite)
+            .border(1.5.dp, content.accentColor, Rounded2xl)
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Icon + Title
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(26.dp)
+                        .clip(RoundedSm)
+                        .background(content.pastelBg)
+                        .border(1.dp, content.pastelBorder, RoundedSm),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = content.icon,
+                        contentDescription = null,
+                        tint = content.accentColor,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+
+                Text(
+                    text = content.title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = SlateTextMain
+                )
+            }
+
+            // Colored line description
+            Text(
+                text = content.coloredLine,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = content.accentColor
+            )
+
+            // Subtitle description
+            Text(
+                text = content.subtitle,
+                fontSize = 12.sp,
+                color = SlateTextMuted
+            )
+
+            // Date time & Odometer row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = dateFormatter.format(Date(event.timestamp)),
+                    fontSize = 11.sp,
+                    color = SlateTextFaint,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Speed,
+                        contentDescription = null,
+                        tint = SlateTextMuted,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Text(
+                        text = String.format(Locale.US, "%,.0f km", event.odometerKm),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = SlateTextMain,
+                        letterSpacing = (-0.3).sp
+                    )
+                }
+            }
+        }
+    }
+}
+
 

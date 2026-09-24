@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,12 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Propane
-import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Warning
@@ -82,178 +78,109 @@ fun DashboardScreen(
     var activeOdoAction by remember { mutableStateOf<DashboardOdoAction?>(null) }
 
     Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Hero Card: Blended Running Cost
-            item {
-                BlendedCostHeroCard(
-                    costPerKm = state.blendedCost.blendedCostPerKm,
-                    totalDistanceKm = state.blendedCost.totalDistanceKm,
-                    totalSpend = state.blendedCost.totalCost,
-                    cngRatioPercent = state.blendedCost.cngSharePercent,
-                    petrolRatioPercent = state.blendedCost.petrolSharePercent,
-                    cngCostPerKm = state.blendedCost.cngCostPerKm,
-                    petrolCostPerKm = state.blendedCost.petrolCostPerKm,
-                    odometerKm = state.telemetry.odometerKm,
-                    onOdometerClick = { activeOdoAction = DashboardOdoAction.UPDATE_ODOMETER }
+            // Hero Card: Blended Running Cost (Responsive weight = 1.15f)
+            BlendedCostHeroCard(
+                costPerKm = state.blendedCost.blendedCostPerKm,
+                totalDistanceKm = state.blendedCost.totalDistanceKm,
+                totalSpend = state.blendedCost.totalCost,
+                cngRatioPercent = state.blendedCost.cngSharePercent,
+                petrolRatioPercent = state.blendedCost.petrolSharePercent,
+                cngCostPerKm = state.blendedCost.cngCostPerKm,
+                petrolCostPerKm = state.blendedCost.petrolCostPerKm,
+                odometerKm = state.telemetry.odometerKm,
+                monthlySavings = state.blendedCost.monthlySavingsVsPetrol,
+                onOdometerClick = { activeOdoAction = DashboardOdoAction.UPDATE_ODOMETER },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1.15f)
+            )
+
+            // Primary Fuel Card (In Use)
+            if (state.isCngInUse) {
+                CngEfficiencyCard(
+                    mileageKmPerKg = state.cngEfficiency.latestMileageKmPerKg,
+                    tankPercent = null,
+                    currentTripKm = state.cngEfficiency.currentTripKm,
+                    isCngExhausted = false,
+                    exhaustedAtOdoKm = state.cngEfficiency.exhaustedAtOdometerKm,
+                    currentOdoKm = state.telemetry.odometerKm,
+                    lastFill = state.lastCngRefill,
+                    onMarkEmpty = { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1.0f)
+                )
+            } else {
+                PetrolEfficiencyCard(
+                    mileageKmPerL = state.displayedPetrolMileageKmPerL,
+                    petrolPercent = state.telemetry.petrolPercent,
+                    estimatedRangeKm = state.displayedPetrolEstimatedRangeKm,
+                    currentTripKm = state.displayedPetrolCurrentTripKm,
+                    isPetrolActive = true,
+                    onMarkLowFuel = { activeOdoAction = DashboardOdoAction.MARK_LOW_FUEL },
+                    isLowFuelMarked = state.isLowFuelPetrolMarked,
+                    lowFuelOdometerKm = state.lowFuelPetrolOdoKm,
+                    lastFill = state.lastPetrolRefill,
+                    includeColdStart = state.isPetrolColdStartIncluded,
+                    onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
+                    coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
+                    totalColdStarts = state.petrolEfficiency.totalColdStartsCount,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1.1f)
                 )
             }
 
-            // Dual Fuel Cards: Sorted with Fuel in Use on Top, with Switch Fuel Button In-Between
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (state.isCngInUse) {
-                        // CNG Active (Primary)
-                        CngEfficiencyCard(
-                            mileageKmPerKg = state.cngEfficiency.latestMileageKmPerKg,
-                            tankPercent = null,
-                            currentTripKm = state.cngEfficiency.currentTripKm,
-                            isCngExhausted = false,
-                            exhaustedAtOdoKm = state.cngEfficiency.exhaustedAtOdometerKm,
-                            currentOdoKm = state.telemetry.odometerKm,
-                            lastFill = state.lastCngRefill,
-                            onMarkEmpty = { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY }
-                        )
+            // Switch Fuel Button between fuel cards
+            FuelSwitchButton(
+                isCngInUse = state.isCngInUse,
+                onSwitch = { activeOdoAction = DashboardOdoAction.SWITCH_FUEL },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                        // Switch Fuel Button between fuel cards
-                        FuelSwitchButton(
-                            isCngInUse = true,
-                            onSwitch = { activeOdoAction = DashboardOdoAction.SWITCH_FUEL }
-                        )
-
-                        // Petrol (Secondary / Standby)
-                        PetrolEfficiencyCard(
-                            mileageKmPerL = state.displayedPetrolMileageKmPerL,
-                            petrolPercent = state.telemetry.petrolPercent,
-                            estimatedRangeKm = state.displayedPetrolEstimatedRangeKm,
-                            currentTripKm = state.displayedPetrolCurrentTripKm,
-                            isPetrolActive = false,
-                            onMarkLowFuel = { activeOdoAction = DashboardOdoAction.MARK_LOW_FUEL },
-                            isLowFuelMarked = state.isLowFuelPetrolMarked,
-                            lowFuelOdometerKm = state.lowFuelPetrolOdoKm,
-                            lastFill = state.lastPetrolRefill,
-                            includeColdStart = state.isPetrolColdStartIncluded,
-                            onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
-                            coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
-                            totalColdStarts = state.petrolEfficiency.totalColdStartsCount
-                        )
-                    } else {
-                        // Petrol Active (Primary)
-                        PetrolEfficiencyCard(
-                            mileageKmPerL = state.displayedPetrolMileageKmPerL,
-                            petrolPercent = state.telemetry.petrolPercent,
-                            estimatedRangeKm = state.displayedPetrolEstimatedRangeKm,
-                            currentTripKm = state.displayedPetrolCurrentTripKm,
-                            isPetrolActive = true,
-                            onMarkLowFuel = { activeOdoAction = DashboardOdoAction.MARK_LOW_FUEL },
-                            isLowFuelMarked = state.isLowFuelPetrolMarked,
-                            lowFuelOdometerKm = state.lowFuelPetrolOdoKm,
-                            lastFill = state.lastPetrolRefill,
-                            includeColdStart = state.isPetrolColdStartIncluded,
-                            onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
-                            coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
-                            totalColdStarts = state.petrolEfficiency.totalColdStartsCount
-                        )
-
-                        // Switch Fuel Button between fuel cards
-                        FuelSwitchButton(
-                            isCngInUse = false,
-                            onSwitch = { activeOdoAction = DashboardOdoAction.SWITCH_FUEL }
-                        )
-
-                        // CNG (Secondary / Exhausted)
-                        CngEfficiencyCard(
-                            mileageKmPerKg = state.cngEfficiency.latestMileageKmPerKg,
-                            tankPercent = null,
-                            currentTripKm = state.cngEfficiency.currentTripKm,
-                            isCngExhausted = state.cngEfficiency.isCngExhausted,
-                            exhaustedAtOdoKm = state.cngEfficiency.exhaustedAtOdometerKm,
-                            currentOdoKm = state.telemetry.odometerKm,
-                            isCngInUse = false,
-                            lastFill = state.lastCngRefill,
-                            onMarkEmpty = if (!state.cngEfficiency.isCngExhausted) {
-                                { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY }
-                            } else null
-                        )
-                    }
-                }
-            }
-
-            // Savings Banner (Soft Serene Mint) - Only show if savings exist
-            if (state.blendedCost.monthlySavingsVsPetrol > 0) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(3.dp, Rounded3xl, spotColor = Color(0x0A10B981))
-                            .clip(Rounded3xl)
-                            .background(CngPastelBg)
-                            .border(1.dp, CngPastelBorder, Rounded3xl)
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedSm)
-                                    .background(SurfaceWhite),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Savings,
-                                    contentDescription = null,
-                                    tint = CngAccent,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-
-                            Column {
-                                Text(
-                                    text = "BI-FUEL ADVANTAGE",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.6.sp,
-                                    color = SlateTextMuted
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = "Saved ₹${String.format("%,.0f", state.blendedCost.monthlySavingsVsPetrol)}",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.ExtraBold,
-                                        color = Color(0xFF065F46)
-                                    )
-                                    Text(
-                                        text = "this month vs Petrol",
-                                        fontSize = 12.sp,
-                                        color = SlateTextMuted
-                                    )
-                                }
-                            }
-                        }
-
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = SlateTextFaint,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
+            // Secondary Fuel Card (Standby / Exhausted)
+            if (state.isCngInUse) {
+                PetrolEfficiencyCard(
+                    mileageKmPerL = state.displayedPetrolMileageKmPerL,
+                    petrolPercent = state.telemetry.petrolPercent,
+                    estimatedRangeKm = state.displayedPetrolEstimatedRangeKm,
+                    currentTripKm = state.displayedPetrolCurrentTripKm,
+                    isPetrolActive = false,
+                    onMarkLowFuel = { activeOdoAction = DashboardOdoAction.MARK_LOW_FUEL },
+                    isLowFuelMarked = state.isLowFuelPetrolMarked,
+                    lowFuelOdometerKm = state.lowFuelPetrolOdoKm,
+                    lastFill = state.lastPetrolRefill,
+                    includeColdStart = state.isPetrolColdStartIncluded,
+                    onToggleColdStart = { viewModel.setPetrolColdStartIncluded(it) },
+                    coldStartDeductionKm = state.petrolEfficiency.totalColdStartKm,
+                    totalColdStarts = state.petrolEfficiency.totalColdStartsCount,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1.1f)
+                )
+            } else {
+                CngEfficiencyCard(
+                    mileageKmPerKg = state.cngEfficiency.latestMileageKmPerKg,
+                    tankPercent = null,
+                    currentTripKm = state.cngEfficiency.currentTripKm,
+                    isCngExhausted = state.cngEfficiency.isCngExhausted,
+                    exhaustedAtOdoKm = state.cngEfficiency.exhaustedAtOdometerKm,
+                    currentOdoKm = state.telemetry.odometerKm,
+                    isCngInUse = false,
+                    lastFill = state.lastCngRefill,
+                    onMarkEmpty = if (!state.cngEfficiency.isCngExhausted) {
+                        { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY }
+                    } else null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1.0f)
+                )
             }
         }
 
@@ -291,8 +218,13 @@ fun DashboardScreen(
                                 confirmButtonText = "Confirm CNG Empty",
                                 accentColor = CngAccent,
                                 icon = Icons.Default.Propane,
+                                initialColdStarts = viewModel.getActiveCycleColdStarts(),
                                 onConfirmOdometer = { newOdo ->
                                     viewModel.markCngEmpty(newOdo)
+                                    activeOdoAction = null
+                                },
+                                onConfirmWithColdStarts = { newOdo, coldStarts ->
+                                    viewModel.markCngEmpty(newOdo, coldStarts)
                                     activeOdoAction = null
                                 },
                                 onDismiss = { activeOdoAction = null }
@@ -356,7 +288,7 @@ private fun FuelSwitchButton(
         Box(
             modifier = Modifier
                 .padding(horizontal = 10.dp)
-                .shadow(2.dp, CircleShape, spotColor = Color(0x158B73A8))
+                .shadow(2.dp, CircleShape, spotColor = SwitchLavenderAccent.copy(alpha = 0.15f))
                 .clip(CircleShape)
                 .background(SwitchLavenderBg)
                 .border(1.2.dp, SwitchLavenderBorder, CircleShape)

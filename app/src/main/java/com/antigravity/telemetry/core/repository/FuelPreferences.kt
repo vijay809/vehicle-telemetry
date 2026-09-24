@@ -102,4 +102,37 @@ class FuelPreferences(context: Context) {
         val total = getTotalAutoConnectedDurationMinutes() + minutes
         prefs.edit().putLong("total_auto_connected_minutes", total).apply()
     }
+
+    // Vehicle Disconnect Tracking (for Cold vs Warm Start Detection)
+    fun getLastAutoDisconnectedTimestamp(): Long {
+        return prefs.getLong("last_auto_disconnected_timestamp", 0L)
+    }
+
+    fun setLastAutoDisconnectedTimestamp(timestamp: Long) {
+        prefs.edit().putLong("last_auto_disconnected_timestamp", timestamp).apply()
+    }
+
+    // Active CNG Cycle Auto-Detected Cold Starts
+    fun getActiveCycleColdStarts(): Int {
+        return prefs.getInt("active_cycle_cold_starts", 0)
+    }
+
+    fun incrementActiveCycleColdStarts(): Int {
+        val newCount = getActiveCycleColdStarts() + 1
+        prefs.edit().putInt("active_cycle_cold_starts", newCount).apply()
+        return newCount
+    }
+
+    fun resetActiveCycleColdStarts() {
+        prefs.edit().putInt("active_cycle_cold_starts", 0).apply()
+    }
+
+    // Cold Start Cooldown Threshold in Hours (Default: 3.5 hours)
+    fun getColdStartThresholdHours(): Float {
+        return prefs.getFloat("cold_start_threshold_hours", 3.5f)
+    }
+
+    fun setColdStartThresholdHours(hours: Float) {
+        prefs.edit().putFloat("cold_start_threshold_hours", hours).apply()
+    }
 }

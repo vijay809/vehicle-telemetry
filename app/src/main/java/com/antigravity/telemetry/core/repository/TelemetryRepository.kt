@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 
 class TelemetryRepository(
     private val database: AppDatabase,
-    private val preferences: FuelPreferences? = null
+    val preferences: FuelPreferences? = null
 ) {
 
     private val _isSimulationMode = MutableStateFlow(preferences?.getSimulationMode() ?: false)
@@ -160,6 +160,39 @@ class TelemetryRepository(
         } else {
             database.vehicleDao().updateOdometer(event.vehicleId, event.odometerKm)
             _actualTelemetryState.value = _actualTelemetryState.value.copy(odometerKm = event.odometerKm)
+        }
+        // Reset active cycle cold start counter whenever a CNG refill or empty is registered
+        if (event.isCngRefill || event.isCngEmpty) {
+            preferences?.resetActiveCycleColdStarts()
+        }
+    }
+
+    suspend fun logEngineStart(
+        isColdStart: Boolean,
+        odometerKm: Double = getLatestActualOdometer(),
+        timestamp: Long = System.currentTimeMillis()
+    ) {
+        val event = FuelEvent(
+            id = UUID.randomUUID().toString(),
+            vehicleId = "default-vehicle-victoris",
+            timestamp = timestamp,
+            odometerKm = odometerKm,
+            source = EventSource.ANDROID_AUTO,
+            type = if (isColdStart) EventType.COLD_START else EventType.WARM_START,
+            fuelType = FuelType.PETROL,
+            quantity = null,
+            pricePerUnit = null,
+            totalCost = null,
+            isFullTank = false,
+            fuelLevelPercent = null,
+            coldStartsSinceLastRefill = if (isColdStart) 1 else 0,
+            confirmedByUser = true,
+            stationName = if (isColdStart) "Cold start (>3.5h off)" else "Warm start (<3.5h off)",
+            isSimulation = _isSimulationMode.value
+        )
+        database.fuelEventDao().insertEvent(event.toEntity())
+        if (isColdStart) {
+            preferences?.incrementActiveCycleColdStarts()
         }
     }
 

@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.antigravity.telemetry.core.designsystem.CngAccent
 import com.antigravity.telemetry.core.designsystem.CngBadge
 import com.antigravity.telemetry.core.designsystem.CngPastelBg
+import com.antigravity.telemetry.core.designsystem.CngPastelBorder
 import com.antigravity.telemetry.core.designsystem.PetrolAccent
 import com.antigravity.telemetry.core.designsystem.Rounded3xl
 import com.antigravity.telemetry.core.designsystem.RoundedSm
@@ -44,6 +45,10 @@ import com.antigravity.telemetry.core.designsystem.SlateTextMain
 import com.antigravity.telemetry.core.designsystem.SlateTextMuted
 import com.antigravity.telemetry.core.designsystem.SurfaceSubtle
 import com.antigravity.telemetry.core.designsystem.SurfaceWhite
+
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.filled.Savings
 
 @Composable
 fun BlendedCostHeroCard(
@@ -55,6 +60,7 @@ fun BlendedCostHeroCard(
     cngCostPerKm: Double,
     petrolCostPerKm: Double,
     odometerKm: Double = 0.0,
+    monthlySavings: Double = 0.0,
     onOdometerClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -73,13 +79,13 @@ fun BlendedCostHeroCard(
             .clip(Rounded3xl)
             .background(SurfaceWhite)
             .border(1.dp, SlateSoft.copy(alpha = 0.8f), Rounded3xl)
-            .padding(20.dp)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header: Title & 4% badge
+            // Header: Title & Odometer pill
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -140,40 +146,79 @@ fun BlendedCostHeroCard(
                 }
             }
 
-            // Price per km main display
-            Row(
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            // Middle Section: Price per km display + optional monthly savings pill + distance & spend caption
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                    ) {
+                        Text(
+                            text = "₹",
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CngAccent,
+                            modifier = Modifier.padding(bottom = 3.dp)
+                        )
+                        Text(
+                            text = if (costPerKm > 0) String.format("%.2f", costPerKm) else "--",
+                            fontSize = 38.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = SlateTextMain,
+                            letterSpacing = (-0.5).sp
+                        )
+                        Text(
+                            text = "/ km",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = SlateTextMuted,
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+                    }
+
+                    if (monthlySavings > 0) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(CngPastelBg)
+                                .border(1.dp, CngPastelBorder, CircleShape)
+                                .padding(horizontal = 9.dp, vertical = 4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Savings,
+                                    contentDescription = null,
+                                    tint = CngAccent,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Text(
+                                    text = "Saved ₹${String.format(java.util.Locale.US, "%,.0f", monthlySavings)}",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF065F46)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Distance & Spend Caption
                 Text(
-                    text = "₹",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = CngAccent,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                Text(
-                    text = if (costPerKm > 0) String.format("%.2f", costPerKm) else "--",
-                    fontSize = 42.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = SlateTextMain,
-                    letterSpacing = (-0.5).sp
-                )
-                Text(
-                    text = "/ km",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = SlateTextMuted,
-                    modifier = Modifier.padding(bottom = 6.dp)
+                    text = if (totalDistanceKm > 0) "Based on last ${String.format("%,.0f", totalDistanceKm)} km (₹${String.format("%,.0f", totalSpend)} total spend)" else "Awaiting refill data to compute blended running cost",
+                    fontSize = 12.sp,
+                    color = SlateTextMuted
                 )
             }
-
-            // Distance & Spend Caption
-            Text(
-                text = if (totalDistanceKm > 0) "Based on last ${String.format("%,.0f", totalDistanceKm)} km (₹${String.format("%,.0f", totalSpend)} total spend)" else "Awaiting refill data to compute blended running cost",
-                fontSize = 13.sp,
-                color = SlateTextMuted
-            )
 
             // Segmented Progress Track
             Column(
