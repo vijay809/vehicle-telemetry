@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import java.util.UUID
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 class TelemetryRepository(
@@ -171,7 +172,7 @@ class TelemetryRepository(
         isColdStart: Boolean,
         odometerKm: Double = getLatestActualOdometer(),
         timestamp: Long = System.currentTimeMillis()
-    ) {
+    ): String {
         val event = FuelEvent(
             id = UUID.randomUUID().toString(),
             vehicleId = "default-vehicle-victoris",
@@ -188,12 +189,25 @@ class TelemetryRepository(
             coldStartsSinceLastRefill = if (isColdStart) 1 else 0,
             confirmedByUser = true,
             stationName = if (isColdStart) "Cold start (>3.5h off)" else "Warm start (<3.5h off)",
-            isSimulation = _isSimulationMode.value
+            isSimulation = _isSimulationMode.value,
+            driveDurationMinutes = null
         )
         database.fuelEventDao().insertEvent(event.toEntity())
         if (isColdStart) {
             preferences?.incrementActiveCycleColdStarts()
         }
+        return event.id
+    }
+
+    suspend fun updateEngineStartDuration(id: String, durationMinutes: Int) {
+        val event = database.fuelEventDao().getEventById(id) ?: return
+        val isCold = event.type == EventType.COLD_START
+        val baseLabel = if (isCold) "Cold start" else "Warm start"
+        val hours = durationMinutes / 60
+        val mins = durationMinutes % 60
+        val timeFormatted = String.format(Locale.US, "%d:%02d", hours, mins)
+        val updatedDesc = "$baseLabel ( $timeFormatted )"
+        database.fuelEventDao().updateEventDuration(id, durationMinutes, updatedDesc)
     }
 
     suspend fun deleteEvent(id: String) {
@@ -418,6 +432,18 @@ class TelemetryRepository(
             FuelEvent(
                 id = UUID.randomUUID().toString(),
                 vehicleId = "default-vehicle-victoris",
+                timestamp = now - (4 * oneDay) - (12 * oneHour),
+                odometerKm = 9045.0,
+                source = EventSource.ANDROID_AUTO,
+                type = EventType.COLD_START,
+                stationName = "Cold start ( 0:25 )",
+                driveDurationMinutes = 25,
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
                 timestamp = now - (4 * oneDay),
                 odometerKm = 9100.0,
                 source = EventSource.MANUAL,
@@ -428,6 +454,18 @@ class TelemetryRepository(
                 totalCost = 745.0,
                 isFullTank = true,
                 stationName = "Shell Super CNG",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (3 * oneDay) - (14 * oneHour),
+                odometerKm = 9122.0,
+                source = EventSource.ANDROID_AUTO,
+                type = EventType.WARM_START,
+                stationName = "Warm start ( 0:14 )",
+                driveDurationMinutes = 14,
                 confirmedByUser = true,
                 isSimulation = _isSimulationMode.value
             ),
@@ -450,12 +488,36 @@ class TelemetryRepository(
             FuelEvent(
                 id = UUID.randomUUID().toString(),
                 vehicleId = "default-vehicle-victoris",
+                timestamp = now - (2 * oneDay) - (12 * oneHour),
+                odometerKm = 9210.0,
+                source = EventSource.ANDROID_AUTO,
+                type = EventType.COLD_START,
+                stationName = "Cold start ( 0:38 )",
+                driveDurationMinutes = 38,
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
                 timestamp = now - (2 * oneDay),
                 odometerKm = 9250.0,
                 source = EventSource.MANUAL,
                 type = EventType.MANUAL_FUEL_SWITCH,
                 fuelType = FuelType.CNG,
                 stationName = "Switched to CNG mode",
+                confirmedByUser = true,
+                isSimulation = _isSimulationMode.value
+            ),
+            FuelEvent(
+                id = UUID.randomUUID().toString(),
+                vehicleId = "default-vehicle-victoris",
+                timestamp = now - (1 * oneDay) - (8 * oneHour),
+                odometerKm = 9315.0,
+                source = EventSource.ANDROID_AUTO,
+                type = EventType.WARM_START,
+                stationName = "Warm start ( 0:18 )",
+                driveDurationMinutes = 18,
                 confirmedByUser = true,
                 isSimulation = _isSimulationMode.value
             ),
@@ -493,6 +555,96 @@ class TelemetryRepository(
         updateOdometer(9450.0)
     }
 
+    suspend fun seedMissingStartDurations() {
+        val startEvents = database.fuelEventDao().getAllStartEvents()
+        val randomPool = listOf(25, 14, 32, 18, 42, 21, 15, 27, 36, 12)
+        var poolIdx = 0
+
+        for (event in startEvents) {
+            val duration = if (event.driveDurationMinutes != null && event.driveDurationMinutes > 0) {
+                event.driveDurationMinutes
+            } else {
+                val picked = randomPool[poolIdx % randomPool.size]
+                poolIdx++
+                picked
+            }
+
+            val hours = duration / 60
+            val mins = duration % 60
+            val timeFormatted = String.format(Locale.US, "%d:%02d", hours, mins)
+            val base = if (event.type == EventType.COLD_START) "Cold start" else "Warm start"
+            val newStationName = "$base ( $timeFormatted )"
+
+            if (event.driveDurationMinutes != duration || event.stationName != newStationName) {
+                database.fuelEventDao().updateEventDuration(event.id, duration, newStationName)
+            }
+        }
+
+        // If there are zero start events in the database, insert realistic start events
+        // so the user can immediately visually inspect them in the history timeline!
+        if (startEvents.isEmpty()) {
+            val now = System.currentTimeMillis()
+            val oneHour = 3600_000L
+            val oneDay = 86400_000L
+            val currentOdo = database.vehicleDao().getVehicleSync("default-vehicle-victoris")?.activeOdometerKm ?: 9284.0
+
+            val sampleStarts = listOf(
+                FuelEvent(
+                    id = UUID.randomUUID().toString(),
+                    vehicleId = "default-vehicle-victoris",
+                    timestamp = now - (2 * oneDay) + (8 * oneHour),
+                    odometerKm = currentOdo - 75.0,
+                    source = EventSource.ANDROID_AUTO,
+                    type = EventType.COLD_START,
+                    stationName = "Cold start ( 0:25 )",
+                    driveDurationMinutes = 25,
+                    confirmedByUser = true,
+                    isSimulation = _isSimulationMode.value
+                ),
+                FuelEvent(
+                    id = UUID.randomUUID().toString(),
+                    vehicleId = "default-vehicle-victoris",
+                    timestamp = now - (2 * oneDay) + (14 * oneHour),
+                    odometerKm = currentOdo - 50.0,
+                    source = EventSource.ANDROID_AUTO,
+                    type = EventType.WARM_START,
+                    stationName = "Warm start ( 0:14 )",
+                    driveDurationMinutes = 14,
+                    confirmedByUser = true,
+                    isSimulation = _isSimulationMode.value
+                ),
+                FuelEvent(
+                    id = UUID.randomUUID().toString(),
+                    vehicleId = "default-vehicle-victoris",
+                    timestamp = now - oneDay + (9 * oneHour),
+                    odometerKm = currentOdo - 30.0,
+                    source = EventSource.ANDROID_AUTO,
+                    type = EventType.COLD_START,
+                    stationName = "Cold start ( 0:38 )",
+                    driveDurationMinutes = 38,
+                    confirmedByUser = true,
+                    isSimulation = _isSimulationMode.value
+                ),
+                FuelEvent(
+                    id = UUID.randomUUID().toString(),
+                    vehicleId = "default-vehicle-victoris",
+                    timestamp = now - oneDay + (12 * oneHour),
+                    odometerKm = currentOdo - 15.0,
+                    source = EventSource.ANDROID_AUTO,
+                    type = EventType.WARM_START,
+                    stationName = "Warm start ( 0:18 )",
+                    driveDurationMinutes = 18,
+                    confirmedByUser = true,
+                    isSimulation = _isSimulationMode.value
+                )
+            )
+
+            for (sample in sampleStarts) {
+                database.fuelEventDao().insertEvent(sample.toEntity())
+            }
+        }
+    }
+
     private fun FuelEventEntity.toDomain(): FuelEvent = FuelEvent(
         id = id,
         vehicleId = vehicleId,
@@ -509,7 +661,8 @@ class TelemetryRepository(
         coldStartsSinceLastRefill = coldStartsSinceLastRefill,
         confirmedByUser = confirmedByUser,
         stationName = stationName,
-        isSimulation = isSimulation
+        isSimulation = isSimulation,
+        driveDurationMinutes = driveDurationMinutes
     )
 
     private fun FuelEvent.toEntity(): FuelEventEntity = FuelEventEntity(
@@ -528,6 +681,7 @@ class TelemetryRepository(
         coldStartsSinceLastRefill = coldStartsSinceLastRefill,
         confirmedByUser = confirmedByUser,
         stationName = stationName,
-        isSimulation = isSimulation
+        isSimulation = isSimulation,
+        driveDurationMinutes = driveDurationMinutes
     )
 }

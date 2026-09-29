@@ -40,6 +40,15 @@ interface FuelEventDao {
     @Update
     suspend fun updateEvent(event: FuelEventEntity)
 
+    @Query("SELECT * FROM fuel_events WHERE id = :id LIMIT 1")
+    suspend fun getEventById(id: String): FuelEventEntity?
+
+    @Query("UPDATE fuel_events SET stationName = :stationName, driveDurationMinutes = :duration WHERE id = :id")
+    suspend fun updateEventDuration(id: String, duration: Int, stationName: String)
+
+    @Query("SELECT * FROM fuel_events WHERE type IN ('COLD_START', 'WARM_START')")
+    suspend fun getAllStartEvents(): List<FuelEventEntity>
+
     @Query("DELETE FROM fuel_events WHERE id = :id")
     suspend fun deleteEvent(id: String)
 

@@ -69,13 +69,7 @@ class MainActivity : ComponentActivity() {
         val telemetryManager = app.telemetryManager
         val preferences = app.preferences
 
-        // Monitor Android Auto host connection state from the mobile device
-        val carConnection = CarConnection(this)
-        carConnection.type.observe(this) { type ->
-            val isConnected = (type == CarConnection.CONNECTION_TYPE_PROJECTION ||
-                               type == CarConnection.CONNECTION_TYPE_NATIVE)
-            telemetryManager.onConnectionStateChanged(isConnected)
-        }
+        // Note: Android Auto connection state is observed at the Application level in AntiGravityApp
 
         setContent {
             AntiGravityTheme {

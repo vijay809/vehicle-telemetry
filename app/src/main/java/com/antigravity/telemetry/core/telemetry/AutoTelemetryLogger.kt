@@ -45,6 +45,16 @@ object AutoTelemetryLogger {
         val prefix = if (isError) "[ERROR]" else "[INFO]"
         val formattedLine = "$timestamp $prefix [$tag] $message"
 
+        try {
+            if (isError) {
+                android.util.Log.e("AutoTelemetry", "[$tag] $message")
+            } else {
+                android.util.Log.d("AutoTelemetry", "[$tag] $message")
+            }
+        } catch (_: Throwable) {
+            // Ignored in unit test environments where android.util.Log is not mocked
+        }
+
         synchronized(recentLogsQueue) {
             if (recentLogsQueue.size >= MAX_RECENT_LOGS) {
                 recentLogsQueue.pollFirst()

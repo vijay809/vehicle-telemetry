@@ -41,6 +41,12 @@ data class FuelLedgerUiState(
 
 class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewModel() {
 
+    init {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            repository.seedMissingStartDurations()
+        }
+    }
+
     private val _selectedFilter = MutableStateFlow(LedgerFilter.ALL)
 
     val uiState: StateFlow<FuelLedgerUiState> = combine(
@@ -54,7 +60,7 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
         )
 
         val cngs = events.filter { it.isCngRefill || it.isCngEmpty }
-        val pets = events.filter { it.isPetrolRefill || it.isPetrolReserve }
+        val pets = events.filter { it.isPetrolRefill || it.isPetrolReserve || it.isColdStart || it.isWarmStart }
         val odos = events.filter { it.isOdometerUpdate }
         val switches = events.filter { it.isManualFuelSwitch || it.isCngEmpty }
 

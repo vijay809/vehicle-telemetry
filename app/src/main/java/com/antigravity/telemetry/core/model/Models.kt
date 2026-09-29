@@ -27,7 +27,8 @@ data class FuelEvent(
     val coldStartsSinceLastRefill: Int = 0,
     val confirmedByUser: Boolean = true,
     val stationName: String? = null,
-    val isSimulation: Boolean = false
+    val isSimulation: Boolean = false,
+    val driveDurationMinutes: Int? = null
 ) {
     val isCngRefill: Boolean
         get() = type == EventType.CNG_FILL || (type == EventType.REFILL && fuelType == FuelType.CNG)

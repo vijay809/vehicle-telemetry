@@ -33,7 +33,8 @@ data class FuelEventEntity(
     val coldStartsSinceLastRefill: Int,
     val confirmedByUser: Boolean,
     val stationName: String?,
-    val isSimulation: Boolean = false
+    val isSimulation: Boolean = false,
+    val driveDurationMinutes: Int? = null
 )
 
 @Entity(tableName = "drive_segments")

@@ -94,6 +94,14 @@ class FuelPreferences(context: Context) {
         prefs.edit().putLong("last_auto_connected_timestamp", timestamp).apply()
     }
 
+    fun getLastEngineStartLoggedTimestamp(): Long {
+        return prefs.getLong("last_engine_start_logged_timestamp", 0L)
+    }
+
+    fun setLastEngineStartLoggedTimestamp(timestamp: Long) {
+        prefs.edit().putLong("last_engine_start_logged_timestamp", timestamp).apply()
+    }
+
     fun getTotalAutoConnectedDurationMinutes(): Long {
         return prefs.getLong("total_auto_connected_minutes", 0L)
     }
@@ -110,6 +118,38 @@ class FuelPreferences(context: Context) {
 
     fun setLastAutoDisconnectedTimestamp(timestamp: Long) {
         prefs.edit().putLong("last_auto_disconnected_timestamp", timestamp).apply()
+    }
+
+    fun getLastConnectionHeartbeat(): Long {
+        return prefs.getLong("last_connection_heartbeat", 0L)
+    }
+
+    fun setLastConnectionHeartbeat(timestamp: Long) {
+        prefs.edit().putLong("last_connection_heartbeat", timestamp).apply()
+    }
+
+    fun getActiveStartEventId(): String? {
+        return prefs.getString("active_start_event_id", null)
+    }
+
+    fun setActiveStartEventId(id: String?) {
+        prefs.edit().putString("active_start_event_id", id).apply()
+    }
+
+    fun getActiveStartConnectTimestamp(): Long {
+        return prefs.getLong("active_start_connect_timestamp", 0L)
+    }
+
+    fun setActiveStartConnectTimestamp(timestamp: Long) {
+        prefs.edit().putLong("active_start_connect_timestamp", timestamp).apply()
+    }
+
+    fun isVehicleConnected(): Boolean {
+        return prefs.getBoolean("is_vehicle_connected", false)
+    }
+
+    fun setVehicleConnected(connected: Boolean) {
+        prefs.edit().putBoolean("is_vehicle_connected", connected).apply()
     }
 
     // Active CNG Cycle Auto-Detected Cold Starts

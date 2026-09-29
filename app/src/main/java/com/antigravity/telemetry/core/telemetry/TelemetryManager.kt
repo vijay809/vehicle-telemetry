@@ -1,5 +1,6 @@
 package com.antigravity.telemetry.core.telemetry
 
+import android.content.Context
 import com.antigravity.telemetry.core.model.TelemetrySnapshot
 import com.antigravity.telemetry.core.repository.TelemetryRepository
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +20,7 @@ data class StationaryRefillPrompt(
 
 class TelemetryManager(
     private val repository: TelemetryRepository,
+    private val context: Context? = null,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default)
 ) {
     private var simulationJob: Job? = null
@@ -71,46 +73,84 @@ class TelemetryManager(
     }
 
     fun onConnectionStateChanged(isConnected: Boolean) {
-        val wasConnected = repository.vehicleHardwareState.value.isConnected
-        repository.updateActualConnection(isConnected)
-        if (isConnected && !wasConnected) {
+        val wasConnected = repository.preferences?.isVehicleConnected()
+            ?: repository.vehicleHardwareState.value.isConnected
+
+        if (isConnected == wasConnected) {
+            return
+        }
+        if (isConnected) {
             handleCarConnected()
-        } else if (!isConnected && wasConnected) {
+        } else {
             handleCarDisconnected()
         }
+        repository.preferences?.setVehicleConnected(isConnected)
+        repository.updateActualConnection(isConnected)
     }
 
     private fun handleCarConnected() {
         val prefs = repository.preferences ?: return
         val now = System.currentTimeMillis()
-        val lastConnect = prefs.getLastAutoConnectedTimestamp()
         val lastDisconnect = prefs.getLastAutoDisconnectedTimestamp()
+        val lastHeartbeat = prefs.getLastConnectionHeartbeat()
+        val lastStartLogged = prefs.getLastEngineStartLoggedTimestamp()
+        val thresholdHours = prefs.getColdStartThresholdHours()
+        val thresholdMs = (thresholdHours * 60 * 60 * 1000L).toLong()
 
-        // Debounce: If re-connected within 2 minutes of last connect, treat as transient reconnect
-        if (lastConnect > 0 && (now - lastConnect) < 2 * 60 * 1000L) {
+        // Debounce 1: If an engine start was logged within the last 2 minutes, ignore rapid bounce
+        if (lastStartLogged > 0L && (now - lastStartLogged) < 2 * 60 * 1000L) {
+            AutoTelemetryLogger.log(
+                "ENGINE_START",
+                "Ignored connect: start already logged ${(now - lastStartLogged) / 1000}s ago (< 120s)"
+            )
+            context?.let { VehicleMonitoringService.start(it) }
             return
         }
 
-        val thresholdHours = prefs.getColdStartThresholdHours()
-        val isColdStart = if (lastDisconnect == 0L) {
-            true // Initial baseline connection is considered a cold start
-        } else {
-            val diffHours = (now - lastDisconnect) / (1000.0 * 60.0 * 60.0)
-            diffHours >= thresholdHours
+        // Most recent known active or disconnect time
+        val lastActive = maxOf(lastDisconnect, lastHeartbeat)
+
+        // Debounce 2: If the vehicle was active less than 2 minutes ago, treat as ongoing trip / cable jiggle
+        if (lastActive > 0L && lastStartLogged > 0L && (now - lastActive) < 2 * 60 * 1000L) {
+            AutoTelemetryLogger.log(
+                "ENGINE_START",
+                "Ignored transient reconnect: active ${(now - lastActive) / 1000}s ago (< 120s)"
+            )
+            context?.let { VehicleMonitoringService.start(it) }
+            return
         }
 
+        // Calculate cooldown duration from most recent activity
+        val cooldownMs = if (lastActive > 0L) {
+            now - lastActive
+        } else if (lastStartLogged > 0L) {
+            now - lastStartLogged
+        } else {
+            Long.MAX_VALUE // Initial baseline connection is Cold Start
+        }
+
+        val isColdStart = (cooldownMs >= thresholdMs)
+
+        prefs.setLastEngineStartLoggedTimestamp(now)
         prefs.setLastAutoConnectedTimestamp(now)
+        prefs.setActiveStartConnectTimestamp(now)
+        prefs.setLastConnectionHeartbeat(now)
+        prefs.setVehicleConnected(true)
+
+        // Start Foreground Service to keep app process alive throughout driving
+        context?.let { VehicleMonitoringService.start(it) }
 
         scope.launch {
             val currentOdo = repository.getLatestActualOdometer()
-            repository.logEngineStart(
+            val eventId = repository.logEngineStart(
                 isColdStart = isColdStart,
                 odometerKm = currentOdo,
                 timestamp = now
             )
+            prefs.setActiveStartEventId(eventId)
             AutoTelemetryLogger.log(
                 "ENGINE_START",
-                "Android Auto connected -> ${if (isColdStart) "COLD START" else "WARM START"} logged @ $currentOdo km"
+                "Engine start detected -> ${if (isColdStart) "COLD START" else "WARM START"} (cooldown: ${cooldownMs / 60000}m) logged @ $currentOdo km"
             )
         }
     }
@@ -119,32 +159,80 @@ class TelemetryManager(
         val prefs = repository.preferences ?: return
         val now = System.currentTimeMillis()
         prefs.setLastAutoDisconnectedTimestamp(now)
-        AutoTelemetryLogger.log(
-            "ENGINE_STOP",
-            "Android Auto disconnected -> disconnect timestamp recorded for cooldown tracking"
-        )
+        prefs.setVehicleConnected(false)
+
+        val connectTime = prefs.getActiveStartConnectTimestamp()
+        val activeEventId = prefs.getActiveStartEventId()
+        val driveMinutes = if (connectTime > 0L) {
+            maxOf(1, ((now - connectTime) / (60 * 1000L)).toInt())
+        } else null
+
+        if (activeEventId != null && driveMinutes != null) {
+            scope.launch {
+                repository.updateEngineStartDuration(activeEventId, driveMinutes)
+            }
+            prefs.setActiveStartEventId(null)
+            prefs.setActiveStartConnectTimestamp(0L)
+            AutoTelemetryLogger.log(
+                "ENGINE_STOP",
+                "Android Auto disconnected -> Trip completed: $driveMinutes min drive"
+            )
+        } else {
+            AutoTelemetryLogger.log(
+                "ENGINE_STOP",
+                "Android Auto disconnected -> disconnect timestamp recorded for cooldown tracking"
+            )
+        }
+
+        // Stop Foreground Service
+        context?.let { VehicleMonitoringService.stop(it) }
     }
 
     fun simulateColdStart() {
+        val prefs = repository.preferences
+        val now = System.currentTimeMillis()
+        prefs?.setLastEngineStartLoggedTimestamp(now)
+        prefs?.setActiveStartConnectTimestamp(now)
         scope.launch {
             val currentOdo = repository.getLatestActualOdometer()
-            repository.logEngineStart(
+            val eventId = repository.logEngineStart(
                 isColdStart = true,
                 odometerKm = currentOdo,
-                timestamp = System.currentTimeMillis()
+                timestamp = now
             )
+            prefs?.setActiveStartEventId(eventId)
         }
     }
 
     fun simulateWarmStart() {
+        val prefs = repository.preferences
+        val now = System.currentTimeMillis()
+        prefs?.setLastEngineStartLoggedTimestamp(now)
+        prefs?.setActiveStartConnectTimestamp(now)
         scope.launch {
             val currentOdo = repository.getLatestActualOdometer()
-            repository.logEngineStart(
+            val eventId = repository.logEngineStart(
                 isColdStart = false,
                 odometerKm = currentOdo,
-                timestamp = System.currentTimeMillis()
+                timestamp = now
             )
+            prefs?.setActiveStartEventId(eventId)
         }
+    }
+
+    fun simulateTripEnd(durationMinutes: Int = 15) {
+        val prefs = repository.preferences ?: return
+        val activeEventId = prefs.getActiveStartEventId()
+        if (activeEventId != null) {
+            scope.launch {
+                repository.updateEngineStartDuration(activeEventId, durationMinutes)
+            }
+            prefs.setActiveStartEventId(null)
+            prefs.setActiveStartConnectTimestamp(0L)
+        }
+        val now = System.currentTimeMillis()
+        prefs.setLastAutoDisconnectedTimestamp(now)
+        prefs.setVehicleConnected(false)
     }
 
     fun startDriveSimulation() {
