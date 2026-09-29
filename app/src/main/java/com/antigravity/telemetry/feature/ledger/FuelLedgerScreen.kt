@@ -26,16 +26,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.EvStation
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Propane
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.TrendingDown
@@ -44,6 +48,7 @@ import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
@@ -76,6 +81,7 @@ import com.antigravity.telemetry.core.designsystem.CngAccent
 import com.antigravity.telemetry.core.designsystem.CngPastelBg
 import com.antigravity.telemetry.core.designsystem.CngPastelBorder
 import com.antigravity.telemetry.core.designsystem.PetrolAccent
+import com.antigravity.telemetry.core.designsystem.PetrolBadge
 import com.antigravity.telemetry.core.designsystem.PetrolPastelBg
 import com.antigravity.telemetry.core.designsystem.PetrolPastelBorder
 import com.antigravity.telemetry.core.designsystem.Rounded2xl
@@ -221,164 +227,188 @@ fun FuelLedgerScreen(
                 }
             }
 
-            // Top Metrics Summary Bento Card
+            // Dynamic Cold Start Warmup Stepper (Collapsible)
             item {
-                Row(
+                var isExpanded by remember { mutableStateOf(false) }
+                val currentWarmupKm = state.coldStartWarmupDistanceKm
+                val currentMeters = (currentWarmupKm * 1000).toInt()
+
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(4.dp, Rounded3xl, spotColor = Color(0x0A0F172A))
-                        .clip(Rounded3xl)
+                        .shadow(2.dp, Rounded2xl, spotColor = Color(0x0A0F172A))
+                        .clip(Rounded2xl)
                         .background(SurfaceWhite)
-                        .border(1.dp, SlateSoft.copy(alpha = 0.8f), Rounded3xl)
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        .border(1.dp, SlateSoft.copy(alpha = 0.8f), Rounded2xl)
                 ) {
-                    // 30D Fuel Ratio
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(Rounded2xl)
-                            .background(CngPastelBg.copy(alpha = 0.6f))
-                            .border(1.dp, CngPastelBorder.copy(alpha = 0.6f), Rounded2xl)
-                            .padding(12.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Collapsible Header Row
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { isExpanded = !isExpanded }
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "30D FUEL RATIO",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp,
-                                    color = CngAccent
-                                )
-                                Icon(Icons.Default.PieChart, null, tint = CngAccent, modifier = Modifier.size(15.dp))
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.Bottom,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                Text(
-                                    text = "${String.format("%.0f", state.cngRatioPercent)}%",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = CngAccent
-                                )
-                                Text(
-                                    text = "CNG",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = CngAccent,
-                                    modifier = Modifier.padding(bottom = 2.dp)
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Text(
-                                    text = "${String.format("%.0f", state.petrolRatioPercent)}%",
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = PetrolAccent
-                                )
-                                Text(
-                                    text = "PET",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PetrolAccent,
-                                    modifier = Modifier.padding(bottom = 1.dp)
-                                )
-                            }
-
-                            // Dual progress bar
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(6.dp)
-                                    .clip(CircleShape)
-                                    .background(SurfaceSubtle)
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .weight((state.cngRatioPercent / 100f).toFloat().coerceAtLeast(0.01f))
-                                        .height(6.dp)
-                                        .clip(CircleShape)
-                                        .background(CngAccent)
-                                )
+                                        .size(32.dp)
+                                        .clip(RoundedSm)
+                                        .background(PetrolPastelBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AcUnit,
+                                        contentDescription = null,
+                                        tint = PetrolAccent,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                Column {
+                                    Text(
+                                        text = "Cold Start Warmup Distance",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = SlateTextMain
+                                    )
+                                    Text(
+                                        text = "${String.format(java.util.Locale.US, "%.1f", currentWarmupKm)} km (${currentMeters}m per start)",
+                                        fontSize = 11.sp,
+                                        color = SlateTextMuted
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .weight((state.petrolRatioPercent / 100f).toFloat().coerceAtLeast(0.01f))
-                                        .height(6.dp)
                                         .clip(CircleShape)
-                                        .background(PetrolAccent)
+                                        .background(PetrolBadge)
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "${currentMeters}m",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = PetrolAccent
+                                    )
+                                }
+                                Icon(
+                                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                                    tint = SlateTextMuted,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
-                    }
 
-                    // Net Running Cost
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(Rounded2xl)
-                            .background(SurfaceSubtle)
-                            .border(1.dp, SlateSoft, Rounded2xl)
-                            .padding(12.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                        // Collapsible Stepper Content
+                        AnimatedVisibility(visible = isExpanded) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 14.dp, end = 14.dp, bottom = 14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text(
-                                    text = "NET RUNNING COST",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp,
-                                    color = SlateTextMuted
-                                )
-                                Icon(Icons.Default.Payments, null, tint = SlateTextMuted, modifier = Modifier.size(15.dp))
-                            }
+                                HorizontalDivider(color = SlateSoft.copy(alpha = 0.6f), thickness = 0.5.dp)
 
-                            Row(
-                                verticalAlignment = Alignment.Bottom,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
                                 Text(
-                                    text = if (state.netRunningCost > 0) "₹${String.format("%.2f", state.netRunningCost)}" else "--",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SlateTextMain
-                                )
-                                Text(
-                                    text = "/ km",
+                                    text = "Estimated petrol distance traveled during engine warmup before switching to CNG. Adjusted in 100m steps.",
                                     fontSize = 11.sp,
                                     color = SlateTextMuted,
-                                    modifier = Modifier.padding(bottom = 2.dp)
+                                    lineHeight = 15.sp
                                 )
-                            }
 
-                            if (state.netRunningCost > 0) {
+                                // Stepper Row
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(Rounded2xl)
+                                        .background(SurfaceSubtle)
+                                        .border(1.dp, SlateSoft, Rounded2xl)
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.TrendingDown, null, tint = CngAccent, modifier = Modifier.size(13.dp))
-                                    Text(
-                                        text = "-62% vs Petrol pure",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = CngAccent
-                                    )
+                                    // Decrement Button (-100m)
+                                    IconButton(
+                                        onClick = {
+                                            val next = kotlin.math.max(0.0, Math.round((currentWarmupKm - 0.1) * 10.0) / 10.0)
+                                            viewModel.updateColdStartDistance(next)
+                                        },
+                                        enabled = currentWarmupKm > 0.0,
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(if (currentWarmupKm > 0.0) SurfaceWhite else SlateSoft.copy(alpha = 0.5f))
+                                            .border(1.dp, SlateSoft, CircleShape)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Remove,
+                                            contentDescription = "Decrease 100m",
+                                            tint = if (currentWarmupKm > 0.0) SlateTextMain else SlateTextFaint,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+
+                                    // Value Display
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Row(
+                                            verticalAlignment = Alignment.Bottom,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Text(
+                                                text = String.format(java.util.Locale.US, "%.1f", currentWarmupKm),
+                                                fontSize = 24.sp,
+                                                fontWeight = FontWeight.ExtraBold,
+                                                color = PetrolAccent
+                                            )
+                                            Text(
+                                                text = "km",
+                                                fontSize = 13.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = SlateTextMuted,
+                                                modifier = Modifier.padding(bottom = 2.dp)
+                                            )
+                                        }
+                                        Text(
+                                            text = "$currentMeters meters (±100m / click)",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = SlateTextFaint
+                                        )
+                                    }
+
+                                    // Increment Button (+100m)
+                                    IconButton(
+                                        onClick = {
+                                            val next = kotlin.math.min(10.0, Math.round((currentWarmupKm + 0.1) * 10.0) / 10.0)
+                                            viewModel.updateColdStartDistance(next)
+                                        },
+                                        enabled = currentWarmupKm < 10.0,
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(if (currentWarmupKm < 10.0) SurfaceWhite else SlateSoft.copy(alpha = 0.5f))
+                                            .border(1.dp, SlateSoft, CircleShape)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Increase 100m",
+                                            tint = if (currentWarmupKm < 10.0) SlateTextMain else SlateTextFaint,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
                                 }
-                            } else {
-                                Text(
-                                    text = "Awaiting data",
-                                    fontSize = 10.sp,
-                                    color = SlateTextFaint
-                                )
                             }
                         }
                     }
@@ -435,7 +465,8 @@ fun FuelLedgerScreen(
                     TimelineEventCard(
                         event = event,
                         dateFormatter = dateFormatter,
-                        onDelete = { eventToDelete = event }
+                        onDelete = { eventToDelete = event },
+                        warmupDistanceKm = state.coldStartWarmupDistanceKm
                     )
                 }
             }
@@ -537,7 +568,7 @@ private data class EventCardContent(
 )
 
 @Composable
-private fun getEventCardContent(event: FuelEvent): EventCardContent {
+private fun getEventCardContent(event: FuelEvent, warmupDistanceKm: Double = 1.2): EventCardContent {
     return when {
         // 1. CNG Fill
         event.isCngRefill -> EventCardContent(
@@ -554,7 +585,7 @@ private fun getEventCardContent(event: FuelEvent): EventCardContent {
         event.isCngEmpty -> EventCardContent(
             title = "CNG Exhausted",
             coloredLine = "Tank Exhausted • Switched to Petrol",
-            subtitle = "${event.coldStartsSinceLastRefill} cold starts deducted (${String.format(Locale.US, "%.1f", event.coldStartsSinceLastRefill * 1.2)} km)",
+            subtitle = "${event.coldStartsSinceLastRefill} cold starts deducted (${String.format(Locale.US, "%.1f", event.coldStartsSinceLastRefill * warmupDistanceKm)} km)",
             accentColor = CngAccent,
             pastelBg = CngPastelBg,
             pastelBorder = CngPastelBorder,
@@ -758,9 +789,10 @@ private fun SingleLineStartHistoryItem(
 private fun TimelineEventCard(
     event: FuelEvent,
     dateFormatter: SimpleDateFormat,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    warmupDistanceKm: Double = 1.2
 ) {
-    val content = getEventCardContent(event)
+    val content = getEventCardContent(event, warmupDistanceKm)
 
     Row(
         modifier = Modifier.fillMaxWidth(),

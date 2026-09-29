@@ -36,7 +36,8 @@ data class FuelLedgerUiState(
     val netRunningCost: Double = 0.0,
     val odometerKm: Double = 0.0,
     val isConnectedToAuto: Boolean = false,
-    val vehicleName: String = "Victoris CNG"
+    val vehicleName: String = "Victoris CNG",
+    val coldStartWarmupDistanceKm: Double = 1.2
 )
 
 class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewModel() {
@@ -52,8 +53,9 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
     val uiState: StateFlow<FuelLedgerUiState> = combine(
         _selectedFilter,
         repository.eventsFlow,
-        repository.telemetryState
-    ) { filter, rawEvents, telemetry ->
+        repository.telemetryState,
+        repository.vehicleFlow
+    ) { filter, rawEvents, telemetry, vehicle ->
         // Sort strictly by odometerKm DESC, then timestamp DESC
         val events = rawEvents.sortedWith(
             compareByDescending<FuelEvent> { it.odometerKm }.thenByDescending { it.timestamp }
@@ -87,7 +89,8 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
             netRunningCost = if (blended.blendedCostPerKm > 0) blended.blendedCostPerKm else 0.0,
             odometerKm = telemetry.odometerKm,
             isConnectedToAuto = telemetry.isConnectedToAuto,
-            vehicleName = "Victoris CNG"
+            vehicleName = "Victoris CNG",
+            coldStartWarmupDistanceKm = vehicle?.estimatedWarmupDistanceKmPerColdStart ?: 1.2
         )
     }.stateIn(
         scope = viewModelScope,
@@ -102,6 +105,12 @@ class FuelLedgerViewModel(private val repository: TelemetryRepository) : ViewMod
     fun deleteEvent(id: String) {
         viewModelScope.launch {
             repository.deleteEvent(id)
+        }
+    }
+
+    fun updateColdStartDistance(newDistanceKm: Double) {
+        viewModelScope.launch {
+            repository.updateWarmupDistance(newDistanceKm)
         }
     }
 

@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -101,6 +102,7 @@ fun BlendedCostHeroCard(
     selectedTimeframe: CostTimeframe = CostTimeframe.ONE_MONTH,
     onTimeframeSelected: ((CostTimeframe) -> Unit)? = null,
     onOdometerClick: (() -> Unit)? = null,
+    onBreakdownClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val animatedCngRatio by animateFloatAsState(targetValue = (cngRatioPercent / 100f).toFloat(), label = "cngRatio")
@@ -261,12 +263,48 @@ fun BlendedCostHeroCard(
                     }
                 }
 
-                // Distance & Spend Caption
-                Text(
-                    text = if (totalDistanceKm > 0) "${selectedTimeframe.label} timeframe: ${String.format("%,.0f", totalDistanceKm)} km (₹${String.format("%,.0f", totalSpend)} total spend)" else "No refill logged in ${selectedTimeframe.label} timeframe",
-                    fontSize = 12.sp,
-                    color = SlateTextMuted
-                )
+                // Distance & Spend Caption + Tank Mileage button
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (totalDistanceKm > 0) "${selectedTimeframe.label} timeframe: ${String.format("%,.0f", totalDistanceKm)} km (₹${String.format("%,.0f", totalSpend)} total spend)" else "No refill logged in ${selectedTimeframe.label} timeframe",
+                        fontSize = 11.sp,
+                        color = SlateTextMuted,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+
+                    if (onBreakdownClick != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(CngPastelBg)
+                                .border(1.dp, CngPastelBorder, CircleShape)
+                                .clickable { onBreakdownClick() }
+                                .padding(horizontal = 9.dp, vertical = 3.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Timeline,
+                                    contentDescription = null,
+                                    tint = CngAccent,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Text(
+                                    text = "Tank Mileage",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CngAccent
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Segmented Progress Track

@@ -73,6 +73,7 @@ fun CngEfficiencyCard(
     condition: CngMileageCondition = CngMileageCondition.AWAITING_DATA,
     activeCycleColdStarts: Int = 0,
     activeNetDistanceKm: Double = currentTripKm,
+    cngCostPerKm: Double = 0.0,
     onMileageClick: (() -> Unit)? = null,
     onMarkEmpty: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -245,32 +246,17 @@ fun CngEfficiencyCard(
                         )
                     }
 
-                    if (condition != CngMileageCondition.AWAITING_DATA) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(if (isCngExhausted) SlateSoft else CngPastelBg)
-                                    .border(1.dp, if (isCngExhausted) SlateSoft else CngPastelBorder, CircleShape)
-                                    .padding(horizontal = 6.dp, vertical = 1.dp)
-                            ) {
-                                Text(
-                                    text = condition.label,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isCngExhausted) SlateTextMuted else CngAccent
-                                )
-                            }
-                            Text(
-                                text = "tap for breakdown",
-                                fontSize = 10.sp,
-                                color = SlateTextFaint
-                            )
-                        }
+                    val effectiveCngCostPerKm = if (cngCostPerKm > 0.0) cngCostPerKm else {
+                        val price = lastFill?.pricePerUnit?.takeIf { it > 0.0 } ?: 88.5
+                        if (mileageKmPerKg > 0.0) price / mileageKmPerKg else 0.0
                     }
+                    Text(
+                        text = if (effectiveCngCostPerKm > 0) "₹${String.format(Locale.US, "%.2f", effectiveCngCostPerKm)} / km" else "₹-- / km",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SlateTextMuted,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
@@ -526,6 +512,7 @@ fun PetrolEfficiencyCard(
     totalColdStarts: Int = 0,
     condition: PetrolMileageCondition = PetrolMileageCondition.AWAITING_DATA,
     activePetrolDistanceKm: Double = currentTripKm,
+    petrolCostPerKm: Double = 0.0,
     onMileageClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -701,32 +688,17 @@ fun PetrolEfficiencyCard(
                         )
                     }
 
-                    if (condition != PetrolMileageCondition.AWAITING_DATA) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(PetrolPastelBg)
-                                    .border(1.dp, PetrolPastelBorder, CircleShape)
-                                    .padding(horizontal = 6.dp, vertical = 1.dp)
-                            ) {
-                                Text(
-                                    text = condition.label,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PetrolAccent
-                                )
-                            }
-                            Text(
-                                text = "tap for breakdown",
-                                fontSize = 10.sp,
-                                color = SlateTextFaint
-                            )
-                        }
+                    val effectivePetrolCostPerKm = if (petrolCostPerKm > 0.0) petrolCostPerKm else {
+                        val price = lastFill?.pricePerUnit?.takeIf { it > 0.0 } ?: 96.7
+                        if (mileageKmPerL > 0.0) price / mileageKmPerL else 0.0
                     }
+                    Text(
+                        text = if (effectivePetrolCostPerKm > 0) "₹${String.format(Locale.US, "%.2f", effectivePetrolCostPerKm)} / km" else "₹-- / km",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = SlateTextMuted,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
                 }
 
                 Column(horizontalAlignment = Alignment.End) {

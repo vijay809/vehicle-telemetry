@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Propane
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.WaterDrop
@@ -40,6 +42,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.antigravity.telemetry.core.designsystem.components.OdometerUpdateSheet
+import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -82,43 +88,41 @@ fun RefillWizardSheet(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
-    var showOdoDialog by remember { mutableStateOf(false) }
-    var tempOdoInput by remember { mutableStateOf(state.odometerKm.toString()) }
+    var showOdoSheet by remember { mutableStateOf(false) }
 
-    if (showOdoDialog) {
-        AlertDialog(
-            onDismissRequest = { showOdoDialog = false },
-            title = { Text("Edit Odometer Reading", fontWeight = FontWeight.Bold) },
-            text = {
-                BasicTextField(
-                    value = tempOdoInput,
-                    onValueChange = { tempOdoInput = it },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    textStyle = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = SlateTextMain),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedSm)
-                        .background(SurfaceSubtle)
-                        .padding(12.dp)
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val parsed = tempOdoInput.toDoubleOrNull()
-                        if (parsed != null) viewModel.setOdometer(parsed)
-                        showOdoDialog = false
-                    }
+    if (showOdoSheet) {
+        Dialog(
+            onDismissRequest = { showOdoSheet = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { showOdoSheet = false },
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Box(
+                    modifier = Modifier.clickable(
+                        indication = null,
+                        interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    ) {}
                 ) {
-                    Text("Confirm", color = CngAccent, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showOdoDialog = false }) {
-                    Text("Cancel", color = SlateTextMuted)
+                    OdometerUpdateSheet(
+                        currentOdometerKm = state.odometerKm,
+                        title = "Update Refill Odometer",
+                        confirmButtonText = "Save Odometer",
+                        accentColor = CngAccent,
+                        icon = Icons.Default.Speed,
+                        onConfirmOdometer = { newOdo ->
+                            viewModel.setOdometer(newOdo)
+                            showOdoSheet = false
+                        },
+                        onDismiss = { showOdoSheet = false }
+                    )
                 }
             }
-        )
+        }
     }
 
     Box(
@@ -752,13 +756,14 @@ fun RefillWizardSheet(
                 }
             }
 
-            // Live Odometer Telemetry Card
+            // Live Odometer Telemetry Card (Consistent with the rest of the app)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(Rounded2xl)
                     .background(SurfaceSubtle)
                     .border(1.dp, SlateSoft, Rounded2xl)
+                    .clickable { showOdoSheet = true }
                     .padding(14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -771,12 +776,12 @@ fun RefillWizardSheet(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(RoundedSm)
-                            .background(SurfaceWhite)
-                            .border(1.dp, SlateSoft, RoundedSm),
+                            .background(CngPastelBg)
+                            .border(1.dp, CngPastelBorder, RoundedSm),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.SyncAlt,
+                            imageVector = Icons.Default.Speed,
                             contentDescription = null,
                             tint = CngAccent,
                             modifier = Modifier.size(20.dp)
@@ -786,7 +791,7 @@ fun RefillWizardSheet(
                     Column {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
                                 text = "ODOMETER READING",
@@ -801,21 +806,12 @@ fun RefillWizardSheet(
                                     .background(CngBadge)
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Verified,
-                                        contentDescription = null,
-                                        tint = CngAccent,
-                                        modifier = Modifier.size(11.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Text(
-                                        text = "Live OBD",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = CngAccent
-                                    )
-                                }
+                                Text(
+                                    text = "Cluster",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CngAccent
+                                )
                             }
                         }
 
@@ -824,7 +820,7 @@ fun RefillWizardSheet(
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text(
-                                text = String.format("%,.0f", state.odometerKm),
+                                text = String.format(Locale.US, "%,.0f", state.odometerKm),
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = SlateTextMain
@@ -845,10 +841,7 @@ fun RefillWizardSheet(
                         .clip(CircleShape)
                         .background(SurfaceWhite)
                         .border(1.dp, SlateSoft, CircleShape)
-                        .clickable {
-                            tempOdoInput = state.odometerKm.toString()
-                            showOdoDialog = true
-                        }
+                        .clickable { showOdoSheet = true }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(

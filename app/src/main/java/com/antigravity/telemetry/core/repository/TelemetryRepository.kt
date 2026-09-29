@@ -250,6 +250,25 @@ class TelemetryRepository(
         }
     }
 
+    suspend fun updateWarmupDistance(distanceKm: Double) {
+        val rounded = Math.round(distanceKm * 10.0) / 10.0
+        val existing = database.vehicleDao().getVehicleSync("default-vehicle-victoris")
+        if (existing != null) {
+            database.vehicleDao().updateWarmupDistance("default-vehicle-victoris", rounded)
+        } else {
+            database.vehicleDao().upsertVehicle(
+                VehicleEntity(
+                    id = "default-vehicle-victoris",
+                    name = "Victoris CNG",
+                    cngTankCapacityKg = 10.0,
+                    petrolTankCapacityL = 45.0,
+                    estimatedWarmupDistanceKmPerColdStart = rounded,
+                    activeOdometerKm = 9284.0
+                )
+            )
+        }
+    }
+
     fun updateActualTelemetry(snapshot: TelemetrySnapshot) {
         _actualTelemetryState.value = snapshot.copy(isSimulation = false)
     }

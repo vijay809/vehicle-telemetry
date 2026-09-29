@@ -21,6 +21,9 @@ interface VehicleDao {
 
     @Query("UPDATE vehicles SET activeOdometerKm = :odometerKm WHERE id = :id")
     suspend fun updateOdometer(id: String, odometerKm: Double)
+
+    @Query("UPDATE vehicles SET estimatedWarmupDistanceKmPerColdStart = :distanceKm WHERE id = :id")
+    suspend fun updateWarmupDistance(id: String, distanceKm: Double)
 }
 
 @Dao

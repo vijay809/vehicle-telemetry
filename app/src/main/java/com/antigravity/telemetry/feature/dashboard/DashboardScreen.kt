@@ -88,6 +88,7 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // Hero Card: Blended Running Cost (Responsive weight = 1.15f)
+            // Hero Card: Blended Running Cost (Responsive weight = 1.15f)
             BlendedCostHeroCard(
                 costPerKm = state.blendedCost.blendedCostPerKm,
                 totalDistanceKm = state.blendedCost.totalDistanceKm,
@@ -101,6 +102,7 @@ fun DashboardScreen(
                 selectedTimeframe = state.selectedCostTimeframe,
                 onTimeframeSelected = { viewModel.setCostTimeframe(it) },
                 onOdometerClick = { activeOdoAction = DashboardOdoAction.UPDATE_ODOMETER },
+                onBreakdownClick = { showMileageBreakdown = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1.15f)
@@ -119,6 +121,7 @@ fun DashboardScreen(
                     condition = state.cngEfficiency.calculationCondition,
                     activeCycleColdStarts = state.cngEfficiency.activeCycleColdStarts,
                     activeNetDistanceKm = state.cngEfficiency.activeCycleNetDistanceKm,
+                    cngCostPerKm = state.blendedCost.cngCostPerKm,
                     onMileageClick = { showMileageBreakdown = true },
                     onMarkEmpty = { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY },
                     modifier = Modifier
@@ -142,6 +145,7 @@ fun DashboardScreen(
                     totalColdStarts = state.petrolEfficiency.totalColdStartsCount,
                     condition = state.petrolEfficiency.calculationCondition,
                     activePetrolDistanceKm = state.petrolEfficiency.activeCyclePetrolDistanceKm,
+                    petrolCostPerKm = state.blendedCost.petrolCostPerKm,
                     onMileageClick = { showMileageBreakdown = true },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -174,6 +178,7 @@ fun DashboardScreen(
                     totalColdStarts = state.petrolEfficiency.totalColdStartsCount,
                     condition = state.petrolEfficiency.calculationCondition,
                     activePetrolDistanceKm = state.petrolEfficiency.activeCyclePetrolDistanceKm,
+                    petrolCostPerKm = state.blendedCost.petrolCostPerKm,
                     onMileageClick = { showMileageBreakdown = true },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -192,6 +197,7 @@ fun DashboardScreen(
                     condition = state.cngEfficiency.calculationCondition,
                     activeCycleColdStarts = state.cngEfficiency.activeCycleColdStarts,
                     activeNetDistanceKm = state.cngEfficiency.activeCycleNetDistanceKm,
+                    cngCostPerKm = state.blendedCost.cngCostPerKm,
                     onMileageClick = { showMileageBreakdown = true },
                     onMarkEmpty = if (!state.cngEfficiency.isCngExhausted) {
                         { activeOdoAction = DashboardOdoAction.MARK_CNG_EMPTY }

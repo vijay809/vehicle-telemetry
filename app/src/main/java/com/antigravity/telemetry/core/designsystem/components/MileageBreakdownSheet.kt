@@ -400,8 +400,9 @@ private fun MileageSegmentCard(
                 }
 
                 if (segment.coldStartsCount > 0) {
+                    val sign = if (isCng) "-" else "+"
                     Text(
-                        text = "${segment.coldStartsCount} cold start${if (segment.coldStartsCount > 1) "s" else ""} (-${String.format(Locale.US, "%.1f", segment.coldStartDeductionKm)} km)",
+                        text = "${segment.coldStartsCount} cold start${if (segment.coldStartsCount > 1) "s" else ""} (${sign}${String.format(Locale.US, "%.1f", segment.coldStartDeductionKm)} km)",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium,
                         color = SlateTextMuted
